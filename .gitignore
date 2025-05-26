@@ -1,0 +1,6 @@
+Python/config.ini
+Python/configparser.ConfigParser
+Python/__pycache__
+Python/ui/__pycache__
+.vscode/settings.json
+Python/main_test.py
