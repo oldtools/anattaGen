@@ -39,7 +39,7 @@ Creates a specialized launcher and profile-folder (jacket) for each game which h
  keyboad-mapping and monitor layout.  Tools which automate the process of creating and loading presets for devices, games and settings at 
  a granular level are downloaded and installed from directly within the program.
 
-Antimicro/X, JoyXoff, Joy2Key keymappers are supported.
+AntimicroX, keySticks, JoyXoff, Joy2Key keymappers are supported.
 
 
 ## Installation
@@ -49,7 +49,7 @@ Antimicro/X, JoyXoff, Joy2Key keymappers are supported.
 
 Run the installer or extract the binary to a location of your choice, **or** download and build and run the source files and executables.
 ```sh
-[RJ_PROJ]
+anattaGen
 
 			├──  bin
 			│   ├──  aria2c.exe
@@ -132,16 +132,69 @@ Run the installer or extract the binary to a location of your choice, **or** dow
 			│       └──  Update.png
 # Documentation
 
-[Detailed Docs can be found here](https://[GIT_USER].github.io/[RJ_PROJ])
+[Detailed Docs can be found here](https://oldtools.github.io/anattaGen)
 
 # Setup
 
 
+```
+## Ubuntu Users should :
+## For now clone the repo, setup a virtual environment in python and install the requirements via pip
+## Copy this code and you should be GUD
+
+		sudo apt install python3-venv python3-pip git
+		cd ~
+		git clone --recursive https://github.com/oldtools/anattaGen.git
+		cd anattaGen
+		python3 -m venv .venv
+		source .venv/bin/activate
+		python -m pip install -r requirements.txt
+		python -m Python/main.py
+```
+
+
+
+
+```
+
+
+## Windows 11 / winget users can copy/paste this to install python very quickly:
+
+		winget install -e --id Python.Python.3.12 --scope machine
+```
+
+
+
+```
+
+
+## Now you can clone or download the repo, and install the requirements via pip
+
+
+		cd %userprofile%
+		git clone --recursive https://github.com/oldtools/anattaGen
+		cd anattaGen
+		python -m pip install -r requirements.txt
+		python -m Python\main.py
+```
+
+
+```
+
+
+## Apple Mac Users
+
+		Click the mouse and ask Tim if it's okay
+		Upgrade your monitor stand.
+```
+
+
+
 ## Launching Games
 It is not necessary, but recommended to enable the RunAsAdmin option.
-Ideally, [RJ_PROJ] can run entirely in userspace, however many games require administrator access where user-level hardware is unavailable or unreliable.
+Ideally, anattaGen can run entirely in userspace, however many games require administrator access where user-level hardware is unavailable or unreliable.
 
-![AsAdmin](https://[GIT_USER].github.io/[RJ_PROJ]/img/runas.png)
+![AsAdmin](https://oldtools.github.io/anattaGen/img/runas.png)
 
 During gameplay you may modify and/or create additional joystick profiles and any found within the game's jacket will be saved and reloaded for player 2/3/4, prioritizing the default profile-name eg: game-name/_#.gamecontroller.amgp, and other "player#" monikers.)
 

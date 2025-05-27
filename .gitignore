@@ -1,6 +1,9 @@
 Python/config.ini
 Python/configparser.ConfigParser
-Python/__pycache__
-Python/ui/__pycache__
-.vscode/settings.json
+Python/__pycache__/
+Python/ui/__pycache__/
+.vscode/
 Python/main_test.py
+Python/steam.json
+Python/steam_filtered.txt
+Python/steam_normalized_index.json
