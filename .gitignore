@@ -7,3 +7,7 @@ Python/main_test.py
 Python/steam.json
 Python/steam_filtered.txt
 Python/steam_normalized_index.json
+Python/app.log
+*.bak
+*.old
+*.del
