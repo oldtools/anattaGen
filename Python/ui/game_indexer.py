@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QLabel, QWidget, QHBoxLayout, QMessageBox
 )
 from Python.ui.name_processor import NameProcessor
+from Python.ui.name_utils import normalize_name_for_matching, make_safe_filename
 from Python.ui.steam_utils import locate_and_exclude_manager_config
 
 def index_sources(main_window):

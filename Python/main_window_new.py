@@ -80,8 +80,14 @@ class MainWindow(QMainWindow):
         
     def _prompt_and_process_steam_json(self):
         """Prompt the user to select a Steam JSON file and process it"""
-        from Python.ui.steam_integration import prompt_and_process_steam_json
-        prompt_and_process_steam_json(self)
+        from Python.ui.steam_processor import SteamProcessor
+        
+        # Create processor if needed
+        if not hasattr(self, 'steam_processor'):
+            self.steam_processor = SteamProcessor(self, self.steam_cache_manager)
+        
+        # Process Steam JSON
+        self.steam_processor.prompt_and_process_steam_json()
         
     def _update_steam_json_cache(self):
         """Update the Steam JSON cache"""

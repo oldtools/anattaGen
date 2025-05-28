@@ -16,4 +16,5 @@ GitDeploy.*
 *.index
 *.log
 *.json
+steam_filtered.txt
 GitDeploy.*
