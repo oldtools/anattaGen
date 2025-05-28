@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
-    QTableWidgetItem, QHeaderView, QCheckBox
+    QTableWidgetItem, QHeaderView, QCheckBox, QMenu, QFileDialog
 )
 from PyQt6.QtCore import Qt
 
@@ -40,37 +40,43 @@ def populate_editor_tab(main_window):
     # Create button layout
     button_layout = QHBoxLayout()
     
-    # Create buttons for index management
-    main_window.load_index_button = QPushButton("Load Index")
-    main_window.save_index_button = QPushButton("Save Index")
-    main_window.append_index_button = QPushButton("Append Index")
+    # Create index management button with dropdown menu
+    main_window.index_button = QPushButton("Index")
+    index_menu = QMenu(main_window.index_button)
+    
+    # Add actions to the menu
+    load_action = index_menu.addAction("Load Index")
+    load_action.triggered.connect(main_window._load_index)
+    
+    save_action = index_menu.addAction("Save Index")
+    save_action.triggered.connect(main_window._save_editor_table_to_index)
+    
+    delete_action = index_menu.addAction("Delete Indexes")
+    delete_action.triggered.connect(main_window._on_delete_indexes)
+    
+    main_window.index_button.setMenu(index_menu)
+    button_layout.addWidget(main_window.index_button)
+    
+    # Add clear list view button
     main_window.clear_listview_button = QPushButton("Clear List-View")
-    main_window.delete_indexes_button = QPushButton("Delete Indexes")
-    
-    button_layout.addWidget(main_window.load_index_button)
-    button_layout.addWidget(main_window.save_index_button)
-    button_layout.addWidget(main_window.append_index_button)
+    main_window.clear_listview_button.clicked.connect(main_window._on_clear_listview)
     button_layout.addWidget(main_window.clear_listview_button)
-    button_layout.addWidget(main_window.delete_indexes_button)
-    
-    # Add debug buttons
-    debug_button = QPushButton("Debug Set Files")
-    debug_button.clicked.connect(main_window._debug_set_files)
-    debug_button.setToolTip("Print set file contents to console for debugging")
-    
-    steam_debug_button = QPushButton("Debug Steam Matching")
-    steam_debug_button.clicked.connect(main_window._debug_steam_matching)
-    steam_debug_button.setToolTip("Test Steam matching for directories in the table")
     
     # Add regenerate names button
     regenerate_names_button = QPushButton("Regenerate All Names")
     regenerate_names_button.clicked.connect(main_window._regenerate_all_names)
     regenerate_names_button.setToolTip("Regenerate all name overrides in the table")
-    
-    # Add to layout
-    button_layout.addWidget(debug_button)
-    button_layout.addWidget(steam_debug_button)
     button_layout.addWidget(regenerate_names_button)
+    
+    # Add spacer to push CREATE button to the right
+    button_layout.addStretch(1)
+    
+    # Add CREATE button aligned to the right
+    create_button = QPushButton("CREATE")
+    create_button.setStyleSheet("font-weight: bold;")
+    create_button.setToolTip("Generate and create profiles with configurations reflected by values in the list-view")
+    # TODO: Connect this button to the profile creation functionality
+    button_layout.addWidget(create_button)
     
     main_window.editor_tab_layout.addLayout(button_layout)
     
@@ -99,16 +105,4 @@ def populate_editor_tab(main_window):
     main_window.editor_table.customContextMenuRequested.connect(main_window._on_editor_table_custom_context_menu)
     main_window.editor_table.horizontalHeader().sectionClicked.connect(main_window._on_editor_table_header_click)
     
-    main_window.editor_tab_layout.addWidget(main_window.editor_table)
-    
-    # Connect button events
-    main_window.load_index_button.clicked.connect(main_window._load_index)
-    main_window.save_index_button.clicked.connect(main_window._save_editor_table_to_index)
-    main_window.append_index_button.clicked.connect(main_window._on_append_index)
-    main_window.clear_listview_button.clicked.connect(main_window._on_clear_listview)
-    main_window.delete_indexes_button.clicked.connect(main_window._on_delete_indexes) 
-
-
-
-
-
+    main_window.editor_tab_layout.addWidget(main_window.editor_table) 

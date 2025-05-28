@@ -9,21 +9,18 @@ from .ui_widgets import (
     create_app_selection_with_run_wait_widget,
     create_list_management_widget
 )
+from .config_manager import show_import_configuration_dialog
 
 def populate_setup_tab(main_window: QWidget): 
     main_layout = QVBoxLayout(main_window.setup_tab) 
 
     config_button_layout = QHBoxLayout()
-    main_window.import_config_button = QPushButton("Import Configuration File")
-    main_window.import_config_button.clicked.connect(main_window._import_configuration_dialog)
-    main_window.save_config_button = QPushButton("Save Configuration File")
-    main_window.save_config_button.clicked.connect(main_window._show_save_configuration_dialog)
-    main_window.process_steam_json_button = QPushButton("Process Steam Cache File")
+    main_window.import_config_button = QPushButton("Import Configuration")
+    main_window.import_config_button.clicked.connect(lambda: show_import_configuration_dialog(main_window))
+    main_window.process_steam_json_button = QPushButton("Process Steam JSON")
     main_window.process_steam_json_button.clicked.connect(main_window._prompt_and_process_steam_json)
     
     config_button_layout.addWidget(main_window.import_config_button)
-    config_button_layout.addWidget(main_window.save_config_button)
-    config_button_layout.addWidget(main_window.process_steam_json_button)
     config_button_layout.addStretch(1)
     main_layout.addLayout(config_button_layout)
 

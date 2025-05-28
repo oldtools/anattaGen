@@ -6,12 +6,12 @@ from PyQt6.QtWidgets import (
 # Assuming ui_widgets.py is in the same directory (Python.ui)
 from .ui_widgets import create_deployment_path_row_widget
 
-def populate_deployment_tab(main_window: QWidget): # main_window is the MainWindow instance
-    # The 'main_window.deployment_tab' QWidget is already created in MainWindow.__init__
-    # We are just populating it.
-    main_layout = QVBoxLayout(main_window.deployment_tab)
-    main_layout.setContentsMargins(10, 10, 10, 10)
-
+def populate_deployment_tab(main_window: QWidget, tab_widget):
+    """Populate the Deployment tab with UI elements"""
+    # Use the existing deployment_tab instead of creating a new one
+    deployment_tab = main_window.deployment_tab
+    main_layout = QVBoxLayout(deployment_tab)
+    
     # --- Instantiate all checkboxes first to ensure they exist for layout ---
     # These become attributes of main_window
     main_window.net_check_checkbox = QCheckBox("Net-Check (Verify internet connection before launch)")
@@ -23,42 +23,47 @@ def populate_deployment_tab(main_window: QWidget): # main_window is the MainWind
     main_window.run_as_admin_checkbox = QCheckBox("Launch Games As Administrator")
     main_window.hide_taskbar_checkbox = QCheckBox("Attempt to Hide Taskbar During Gameplay")
     main_window.enable_launcher_checkbox = QCheckBox("Use Game-Specific Launcher (if defined in Setup)")
-    main_window.apply_mapper_profiles_checkbox = QCheckBox("Apply Controller Mapper Profiles (if defined in Setup)")
+    main_window.apply_mapper_profiles_checkbox = QCheckBox("Create / Overwrite Joystick Mapping Profiles  (even if not defined)")
 
     # --- Connect dependent checkboxes ---
     main_window.terminate_bw_on_exit_checkbox.setEnabled(main_window.enable_borderless_windowing_checkbox.isChecked())
     main_window.enable_borderless_windowing_checkbox.toggled.connect(main_window.terminate_bw_on_exit_checkbox.setEnabled)
 
-    # --- Top section for Update Steam Cache button ---
-    update_steam_button_layout = QHBoxLayout()
+    # --- Top section for Update Steam Cache and Process Steam Cache buttons ---
+    top_buttons_layout = QHBoxLayout()
     main_window.update_steam_json_button = QPushButton("Update Steam Cache (steam.json)")
     main_window.update_steam_json_button.clicked.connect(main_window._update_steam_json_cache) # Connects to MainWindow method
-    update_steam_button_layout.addStretch(1)
-    update_steam_button_layout.addWidget(main_window.update_steam_json_button)
-    main_layout.addLayout(update_steam_button_layout)
+    
+    main_window.process_steam_json_button = QPushButton("Process Steam Cache File")
+    main_window.process_steam_json_button.clicked.connect(main_window._prompt_and_process_steam_json)
+    
+    top_buttons_layout.addStretch(1)
+    top_buttons_layout.addWidget(main_window.update_steam_json_button)
+    top_buttons_layout.addWidget(main_window.process_steam_json_button)
+    main_layout.addLayout(top_buttons_layout)
     
     # --- Two-column layout for general options checkboxes ---
     general_options_group_box = QWidget() 
     general_options_columns_layout = QHBoxLayout(general_options_group_box)
     
     column1_layout = QVBoxLayout()
-    column1_layout.addWidget(main_window.net_check_checkbox)
     column1_layout.addWidget(main_window.enable_borderless_windowing_checkbox)
     bw_terminate_sub_layout = QHBoxLayout()
     bw_terminate_sub_layout.addSpacing(20) 
     bw_terminate_sub_layout.addWidget(main_window.terminate_bw_on_exit_checkbox)
     bw_terminate_sub_layout.addStretch()
     column1_layout.addLayout(bw_terminate_sub_layout)
-    column1_layout.addWidget(main_window.name_check_checkbox)
     column1_layout.addWidget(main_window.create_profile_folders_checkbox)
+    column1_layout.addWidget(main_window.enable_launcher_checkbox)
+    column1_layout.addWidget(main_window.apply_mapper_profiles_checkbox)
+    column1_layout.addWidget(main_window.run_as_admin_checkbox)
+    column1_layout.addWidget(main_window.hide_taskbar_checkbox)
     column1_layout.addStretch(1)
 
     column2_layout = QVBoxLayout()
+    column2_layout.addWidget(main_window.net_check_checkbox)
+    column2_layout.addWidget(main_window.name_check_checkbox)
     column2_layout.addWidget(main_window.use_kill_list_checkbox)
-    column2_layout.addWidget(main_window.run_as_admin_checkbox)
-    column2_layout.addWidget(main_window.hide_taskbar_checkbox)
-    column2_layout.addWidget(main_window.enable_launcher_checkbox)
-    column2_layout.addWidget(main_window.apply_mapper_profiles_checkbox)
     column2_layout.addStretch(1)
 
     general_options_columns_layout.addLayout(column1_layout)
@@ -108,11 +113,13 @@ def populate_deployment_tab(main_window: QWidget): # main_window is the MainWind
     bottom_button_layout = QHBoxLayout()
     main_window.index_sources_button = QPushButton("Index Sources")
     main_window.index_sources_button.clicked.connect(main_window._index_sources) # Connects to MainWindow method
-    main_window.load_index_button = QPushButton("Load Index")
-    main_window.load_index_button.clicked.connect(main_window._load_index)       # Connects to MainWindow method
+    # Load Index button removed
     bottom_button_layout.addStretch(1)
     bottom_button_layout.addWidget(main_window.index_sources_button)
-    bottom_button_layout.addWidget(main_window.load_index_button)
+    # Load Index button removed
     bottom_button_layout.addStretch(1)
     main_layout.addLayout(bottom_button_layout)
     main_layout.addStretch(1) 
+    
+    # Remove this line - we don't need to add the tab again
+    # tab_widget.addTab(deployment_tab, "Deployment")

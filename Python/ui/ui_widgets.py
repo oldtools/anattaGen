@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QLineEdit, QPushButton, QFileDialog,
-    QToolButton, QMenu, QCheckBox, QComboBox
+    QToolButton, QMenu, QCheckBox, QComboBox, QButtonGroup, QRadioButton
 )
 from PyQt6.QtCore import Qt # Might be needed for alignments or flags
 
@@ -117,9 +117,20 @@ def create_deployment_path_row_widget(parent_window, setup_qlineedit_to_mirror: 
     row_layout = QHBoxLayout(row_widget)
     row_layout.setContentsMargins(0, 0, 0, 0)
 
-    uoc_checkbox = QCheckBox("UOC")
-    uoc_checkbox.setToolTip("Use Original Config: If checked, the application will use the path defined in the Setup tab. If unchecked, it implies a game-specific override might be used (details TBD).")
-    uoc_checkbox.setChecked(True)
+    # Create radio button group
+    radio_group = QButtonGroup(row_widget)
+    
+    # Replace checkboxes with radio buttons
+    uoc_radio = QRadioButton("UOC")
+    uoc_radio.setToolTip("Use Original Config: If selected, the application will use the path defined in the Setup tab.")
+    uoc_radio.setChecked(True)
+    
+    lc_radio = QRadioButton("LC")
+    lc_radio.setToolTip("Launch Conditionally: If selected, this associated application/script will only be launched if certain conditions are met (details TBD).")
+    
+    # Add radio buttons to the group
+    radio_group.addButton(uoc_radio)
+    radio_group.addButton(lc_radio)
 
     path_display_line_edit = QLineEdit()
     path_display_line_edit.setText(setup_qlineedit_to_mirror.text() if setup_qlineedit_to_mirror else "Path not set in Setup")
@@ -131,12 +142,8 @@ def create_deployment_path_row_widget(parent_window, setup_qlineedit_to_mirror: 
             lambda text, display_le=path_display_line_edit: display_le.setText(text)
         )
 
-    lc_checkbox = QCheckBox("LC")
-    lc_checkbox.setToolTip("Launch Conditionally: If checked, this associated application/script will only be launched if certain conditions are met (details TBD).")
-    lc_checkbox.setChecked(False)
-
-    row_layout.addWidget(uoc_checkbox)
+    row_layout.addWidget(uoc_radio)
     row_layout.addWidget(path_display_line_edit, 1)
-    row_layout.addWidget(lc_checkbox)
+    row_layout.addWidget(lc_radio)
     
-    return row_widget, uoc_checkbox, path_display_line_edit, lc_checkbox 
+    return row_widget, uoc_radio, path_display_line_edit, lc_radio

@@ -46,28 +46,62 @@ def make_safe_filename(name: str) -> str:
     
     return result
 
-def normalize_name_for_matching(name: str, stemmer=None) -> str:
+def normalize_name_for_matching(name, stemmer=None):
     """
     Normalize a name for matching purposes.
     
     Args:
         name: The name to normalize
-        stemmer: Optional Porter stemmer for word stemming
+        stemmer: Optional stemmer to use for word stemming
         
     Returns:
-        Normalized name for matching
+        Normalized name
     """
-    from Python.ui.name_processor import NameProcessor
+    if not name:
+        return ""
     
-    # Create a name processor (without sets since we're just normalizing)
-    name_processor = NameProcessor()
+    # Store original for debugging
+    original = name
     
-    # Get the normalized name - handle stemmer parameter
-    if hasattr(name_processor, 'get_match_name_with_stemmer'):
-        return name_processor.get_match_name_with_stemmer(name, stemmer)
-    else:
-        # Fall back to the regular method if the stemmer-aware one doesn't exist
-        return name_processor.get_match_name(name)
+    # Convert to lowercase
+    result = name.lower()
+    
+    # Special handling for short titles (4 chars or less)
+    # These are often acronyms or unique names that should be preserved as-is
+    if len(name) <= 4:
+        print(f"Preserving short title as-is (lowercase): '{name}' -> '{result}'")
+        return result
+    
+    # Special handling for all-uppercase titles (likely acronyms)
+    if name.isupper() and len(name) <= 10:
+        print(f"Preserving uppercase title as-is (lowercase): '{name}' -> '{result}'")
+        return result
+    
+    # Remove non-alphanumeric characters
+    result = re.sub(r'[^a-z0-9\s]', '', result)
+    
+    # Remove common prefixes
+    result = re.sub(r'^(?:the|a|an)\s+', '', result)
+    
+    # Remove common suffixes
+    result = re.sub(r'\s+(?:game|edition|collection|complete|deluxe|goty|premium)$', '', result)
+    
+    # Replace multiple spaces with a single space
+    result = re.sub(r'\s+', ' ', result)
+    
+    # Trim leading and trailing whitespace
+    result = result.strip()
+    
+    # Apply stemming if a stemmer is provided
+    if stemmer and len(result) > 3:  # Only stem if longer than 3 chars
+        words = result.split()
+        stemmed_words = [stemmer.stem(word) for word in words]
+        result = ' '.join(stemmed_words)
+    
+    if original.lower() != result:
+        print(f"Normalized: '{original}' -> '{result}'")
+    
+    return result
 
 def title_case_and_cleanup(name: str) -> str:
     """

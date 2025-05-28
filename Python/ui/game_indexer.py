@@ -3,24 +3,22 @@ import json
 import time
 import re
 from PyQt6.QtCore import Qt, QCoreApplication
-from PyQt6.QtWidgets import QProgressDialog, QTableWidgetItem, QCheckBox, QComboBox, QPushButton, QLabel
+from PyQt6.QtWidgets import (
+    QProgressDialog, QTableWidgetItem, QCheckBox, QComboBox, QPushButton, 
+    QLabel, QWidget, QHBoxLayout, QMessageBox
+)
 from Python.ui.name_processor import NameProcessor
 from Python.ui.steam_utils import locate_and_exclude_manager_config
 
-def index_sources_with_ui_updates(main_window):
-    """Index sources with UI updates and progress dialog"""
-    # Reset cancellation flag
+def index_sources(main_window):
+    """
+    Index sources for games with UI updates
+    
+    Args:
+        main_window: The main application window
+    """
+    # Set indexing_cancelled flag to False
     main_window.indexing_cancelled = False
-    main_window.indexing_in_progress = True
-    
-    # Disable editor table during indexing
-    main_window.editor_table.setEnabled(False)
-    
-    # Create cancel button in status bar
-    main_window.cancel_indexing_button = QPushButton("Cancel Indexing")
-    main_window.cancel_indexing_button.clicked.connect(lambda: _confirm_cancel_indexing(main_window))
-    main_window.statusBar().addPermanentWidget(main_window.cancel_indexing_button)
-    main_window.cancel_indexing_button.show()
     
     # Create progress dialog
     main_window.indexing_progress = QProgressDialog("Preparing to index sources...", "Cancel", 0, 100, main_window)
@@ -39,31 +37,18 @@ def index_sources_with_ui_updates(main_window):
         main_window.indexing_progress.close()
         main_window.indexing_progress = None
     
-    _finish_indexing(main_window)
-    
     return result
 
 def _perform_indexing_with_updates(main_window):
     """
-    Perform the actual indexing with UI updates.
+    Perform the actual indexing with UI updates
     
     Args:
         main_window: The main application window
     
     Returns:
-        True if indexing completed successfully, False otherwise
+        Number of executables found
     """
-    # Reset cancellation flag
-    main_window.indexing_cancelled = False
-    
-    # Check for filtered Steam cache or load Steam data
-    if not hasattr(main_window, 'normalized_steam_match_index') or not main_window.normalized_steam_match_index:
-        print("No normalized Steam match index found, attempting to load...")
-        # Use the SteamCacheManager instance on main_window
-        if not main_window.steam_cache_manager.load_filtered_steam_cache():
-            main_window.statusBar().showMessage("No cached Steam data. Please load Steam JSON first.")
-            return False
-    
     # If requested, exclude games from selected manager
     selected_manager = main_window.other_managers_combo.currentText()
     if selected_manager != "(None)" and main_window.exclude_manager_checkbox.isChecked():
@@ -83,16 +68,10 @@ def _perform_indexing_with_updates(main_window):
         if os.path.exists(source_dir):
             source_count += traverse_source_directory(main_window, source_dir, source_dir)
     
-    if main_window.indexing_cancelled:
-        main_window.statusBar().showMessage("Indexing cancelled")
-        return False
+    # Update status bar
+    main_window.statusBar().showMessage(f"Indexed {source_count} executables", 3000)
     
-    if source_count > 0:
-        main_window.statusBar().showMessage(f"Indexed {source_count} sources")
-        return True
-    else:
-        main_window.statusBar().showMessage("No sources found or indexed")
-        return False
+    return source_count
 
 def _confirm_cancel_indexing(main_window):
     """Show confirmation dialog for cancelling indexing"""
@@ -137,6 +116,10 @@ def traverse_source_directory(main_window, current_dir_path, source_root_path):
         folder_exclude_set=main_window.folder_exclude_set,
         exclude_exe_set=main_window.exclude_exe_set
     )
+    
+    # Debug output for Steam cache
+    print(f"Steam title cache has {len(main_window.steam_title_cache)} entries")
+    print(f"Normalized Steam match index has {len(main_window.normalized_steam_match_index)} entries")
     
     # Process the directory
     try:
@@ -309,12 +292,29 @@ def get_editor_table_data(editor_table):
     """Extract data from the editor table into a list of dictionaries"""
     data = []
     for row in range(editor_table.rowCount()):
-        # Get borderless value from combo box
+        # Get checkbox values safely
+        def get_checkbox_value(row, col):
+            widget = editor_table.cellWidget(row, col)
+            if widget:
+                # Find the checkbox within the container widget
+                checkbox = widget.findChild(QCheckBox)
+                if checkbox:
+                    return checkbox.isChecked()
+            return False
+        
+        # Get borderless value from combo box or text item
         borderless_widget = editor_table.cellWidget(row, 21)
-        borderless_value = borderless_widget.currentText() if isinstance(borderless_widget, QComboBox) else "No"
+        borderless_item = editor_table.item(row, 21)
+        
+        if isinstance(borderless_widget, QComboBox):
+            borderless_value = borderless_widget.currentText()
+        elif borderless_item:
+            borderless_value = borderless_item.text()
+        else:
+            borderless_value = "No"
         
         row_data = {
-            "include": editor_table.cellWidget(row, 0).isChecked() if editor_table.cellWidget(row, 0) else False,
+            "include": get_checkbox_value(row, 0),
             "executable": editor_table.item(row, 1).text() if editor_table.item(row, 1) else "",
             "directory": editor_table.item(row, 2).text() if editor_table.item(row, 2) else "",
             "steam_title": editor_table.item(row, 3).text() if editor_table.item(row, 3) else "",
@@ -336,8 +336,8 @@ def get_editor_table_data(editor_table):
             "just_after": editor_table.item(row, 19).text() if editor_table.item(row, 19) else "",
             "just_before": editor_table.item(row, 20).text() if editor_table.item(row, 20) else "",
             "borderless": borderless_value,
-            "as_admin": editor_table.cellWidget(row, 22).isChecked() if editor_table.cellWidget(row, 22) else False,
-            "no_tb": editor_table.cellWidget(row, 23).isChecked() if editor_table.cellWidget(row, 23) else False
+            "as_admin": get_checkbox_value(row, 22),
+            "no_tb": get_checkbox_value(row, 23)
         }
         data.append(row_data)
     return data
@@ -345,32 +345,34 @@ def get_editor_table_data(editor_table):
 def load_set_file(filename):
     """Load a .set file into a set of strings"""
     result = set()
+    
+    # Get the app's root directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    app_root_dir = os.path.dirname(os.path.dirname(script_dir))
+    
+    # Try app root first
+    app_root_path = os.path.join(app_root_dir, filename)
+    
     try:
-        if os.path.exists(filename):
+        if os.path.exists(app_root_path):
+            with open(app_root_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        result.add(line)
+            print(f"Loaded {len(result)} items from {app_root_path}")
+        elif os.path.exists(filename):
             with open(filename, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#'):
                         result.add(line)
+            print(f"Loaded {len(result)} items from {filename}")
         else:
-            # Try looking in the project root
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(os.path.dirname(script_dir))
-            alt_path = os.path.join(project_root, filename)
-            
-            if os.path.exists(alt_path):
-                with open(alt_path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#'):
-                            result.add(line)
-                print(f"Loaded {len(result)} items from {alt_path}")
-            else:
-                print(f"Warning: {filename} not found at {filename} or {alt_path}")
+            print(f"Warning: {filename} not found at {app_root_path} or {filename}")
     except Exception as e:
         print(f"Error loading {filename}: {e}")
     
-    print(f"Loaded {len(result)} items from {filename}")
     return result
 
 def add_executable_to_editor_table(main_window, include_checked=True, exec_name="", directory="", 
@@ -392,64 +394,84 @@ def add_executable_to_editor_table(main_window, include_checked=True, exec_name=
         as_admin: Whether to run as admin
         no_tb: Whether to disable taskbar integration
         update_ui: Whether to update the UI after adding
-        
-    Returns:
-        The row index of the added item
     """
-    # Debug output to trace the function call
-    print(f"DEBUG: add_executable_to_editor_table called with exec_name={exec_name}")
+    # Debug output
+    print(f"Adding executable to table: {exec_name}")
+    print(f"  Steam name: {steam_name}")
+    print(f"  Steam ID: {steam_id}")
     
-    # Get the current row count
+    # Get current row count
     row = main_window.editor_table.rowCount()
     main_window.editor_table.insertRow(row)
     
     # Create include checkbox
-    include_checkbox = QCheckBox()
-    include_checkbox.setChecked(include_checked)
-    include_checkbox.setStyleSheet("margin-left:10px; margin-right:10px;")
-    main_window.editor_table.setCellWidget(row, 0, include_checkbox)
+    include_widget = create_status_widget(main_window, include_checked, row, 0)
+    main_window.editor_table.setCellWidget(row, 0, include_widget)
     
-    # Set the executable name
+    # Set text items
     main_window.editor_table.setItem(row, 1, QTableWidgetItem(exec_name))
-    
-    # Set the directory
     main_window.editor_table.setItem(row, 2, QTableWidgetItem(directory))
-    
-    # Set the Steam name
     main_window.editor_table.setItem(row, 3, QTableWidgetItem(steam_name))
-    
-    # Set the name override
     main_window.editor_table.setItem(row, 4, QTableWidgetItem(name_override))
+    main_window.editor_table.setItem(row, 5, QTableWidgetItem(options))
+    main_window.editor_table.setItem(row, 6, QTableWidgetItem(arguments))
+    main_window.editor_table.setItem(row, 7, QTableWidgetItem(steam_id))
     
-    # Set the Steam ID
-    main_window.editor_table.setItem(row, main_window.COL_STEAM_ID, QTableWidgetItem(steam_id))
+    # Get deployment tab settings to populate path fields with UOC/LC indicators
+    # Columns 8-20 are path fields that should use < for UOC and > for LC
+    for col in range(8, 21):
+        main_window.editor_table.setItem(row, col, QTableWidgetItem("<"))  # Default to UOC
     
-    # Process UI events to ensure table updates
-    QCoreApplication.processEvents()
+    # Set borderless status (E for enabled, K for terminates on exit, blank for not enabled)
+    borderless_value = ""
+    if hasattr(main_window, 'enable_borderless_windowing_checkbox') and main_window.enable_borderless_windowing_checkbox.isChecked():
+        borderless_value = "E"
+        if hasattr(main_window, 'terminate_bw_on_exit_checkbox') and main_window.terminate_bw_on_exit_checkbox.isChecked():
+            borderless_value = "K"
+    main_window.editor_table.setItem(row, 21, QTableWidgetItem(borderless_value))
+    
+    # Use deployment tab settings for AsAdmin and NoTB if not explicitly provided
+    if not as_admin and hasattr(main_window, 'run_as_admin_checkbox'):
+        as_admin = main_window.run_as_admin_checkbox.isChecked()
+    
+    if not no_tb and hasattr(main_window, 'hide_taskbar_checkbox'):
+        no_tb = main_window.hide_taskbar_checkbox.isChecked()
+    
+    # Create AsAdmin checkbox
+    as_admin_widget = create_status_widget(main_window, as_admin, row, 22)
+    main_window.editor_table.setCellWidget(row, 22, as_admin_widget)
+    
+    # Create NoTB checkbox
+    no_tb_widget = create_status_widget(main_window, no_tb, row, 23)
+    main_window.editor_table.setCellWidget(row, 23, no_tb_widget)
     
     # Update UI if requested
     if update_ui:
-        main_window.editor_table.scrollToItem(main_window.editor_table.item(row, 0))
-        main_window.editor_table.selectRow(row)
-    
-    print(f"DEBUG: Row {row} added to table with exec_name={exec_name}")
+        QCoreApplication.processEvents()
     
     return row
 
-def create_status_widget(text="", status_type="normal"):
-    """Create a status widget with appropriate styling"""
-    from PyQt6.QtWidgets import QLabel
+def create_status_widget(main_window, is_checked=False, row=-1, col=-1):
+    """Create a checkbox widget for table cells"""
+    checkbox = QCheckBox()
+    checkbox.setChecked(is_checked)
+    checkbox.setStyleSheet("QCheckBox { margin-left: 10px; }")
     
-    label = QLabel(text)
-    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    # Center the checkbox in the cell
+    container = QWidget()
+    layout = QHBoxLayout(container)
+    layout.addWidget(checkbox)
+    layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    layout.setContentsMargins(0, 0, 0, 0)
+    container.setLayout(layout)
     
-    if status_type == "error":
-        label.setStyleSheet("background-color: #ffcccc; color: #990000;")
-    elif status_type == "warning":
-        label.setStyleSheet("background-color: #ffffcc; color: #999900;")
-    elif status_type == "success":
-        label.setStyleSheet("background-color: #ccffcc; color: #009900;")
-    else:
-        label.setStyleSheet("background-color: #f0f0f0; color: #000000;")
+    # Store row and column for callback purposes
+    if row >= 0 and col >= 0:
+        checkbox.row = row
+        checkbox.col = col
+        
+        # Connect to parent's edited handler if available
+        if hasattr(main_window, '_on_editor_table_edited'):
+            checkbox.stateChanged.connect(lambda state: main_window._on_editor_table_edited(QTableWidgetItem()))
     
-    return label
+    return container

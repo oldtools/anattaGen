@@ -2,7 +2,7 @@ import sys
 import os
 import logging
 
-# Add the parent directory (NvORTEX) to sys.path to allow relative imports
+# Add the parent directory ([RJ_PROJ])to sys.path to allow relative imports
 # when running this script directly.
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(script_dir)
@@ -24,7 +24,6 @@ logging.info(f"Starting application from {script_dir}")
 logging.info(f"Log file: {os.path.abspath(log_file)}")
 
 from PyQt6.QtWidgets import QApplication
-# Import from the new main_window_new.py file instead
 from Python.main_window_new import MainWindow
 
 if __name__ == "__main__":

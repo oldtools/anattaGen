@@ -76,41 +76,42 @@ class SteamCacheManager:
         self.main_window.steam_title_cache = {}
         self.main_window.normalized_steam_match_index = {}
         
-        # Fix the file path if needed
-        self.fix_steam_cache_file_path()
+        # Get the app's root directory
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        app_root_dir = os.path.dirname(os.path.dirname(script_dir))
         
-        # Check if the file exists
-        if not hasattr(self.main_window, 'filtered_steam_cache_file_path') or not self.main_window.filtered_steam_cache_file_path:
-            print("No filtered Steam cache file path set")
+        # Check if the file exists in the app root
+        steam_filtered_path = os.path.join(app_root_dir, STEAM_FILTERED_TXT)
+        
+        if not os.path.exists(steam_filtered_path):
+            print(f"Filtered Steam cache file not found at app root: {steam_filtered_path}")
             return False
         
-        if not os.path.exists(self.main_window.filtered_steam_cache_file_path):
-            print(f"Filtered Steam cache file not found: {self.main_window.filtered_steam_cache_file_path}")
-            return False
+        # Set the path for future reference
+        self.main_window.filtered_steam_cache_file_path = steam_filtered_path
         
         # First try to load the normalized index cache if it exists
         normalized_index_loaded = self.load_normalized_steam_index()
-        if normalized_index_loaded:
-            print(f"Loaded normalized index with {len(self.main_window.normalized_steam_match_index)} entries")
-            return True
         
-        # If normalized index couldn't be loaded, load the filtered cache and create the index
-        print(f"Loading filtered Steam cache from: {self.main_window.filtered_steam_cache_file_path}")
+        # Always load the filtered cache to ensure we have the complete title cache
+        print(f"Loading filtered Steam cache from: {steam_filtered_path}")
         try:
-            with open(self.main_window.filtered_steam_cache_file_path, 'r', encoding='utf-8') as f:
+            with open(steam_filtered_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     if line.strip():
-                        parts = line.strip().split('|')
+                        parts = line.strip().split('\t')  # Use tab as separator
                         if len(parts) >= 2:
                             app_id = parts[0]
                             title = parts[1]
                             self.main_window.steam_title_cache[app_id] = title
-            
+        
             print(f"Loaded {len(self.main_window.steam_title_cache)} Steam titles")
-            
-            # The normalized index will be created by SteamProcessor after processing the JSON,
-            # or loaded directly if it exists. No need to create it here if loading filtered.txt.
-            
+        
+            # If normalized index wasn't loaded or is incomplete, create it
+            if not normalized_index_loaded or len(self.main_window.normalized_steam_match_index) < len(self.main_window.steam_title_cache) * 0.9:
+                print("Normalized index not loaded or incomplete, creating new one")
+                self.create_normalized_steam_index()
+        
             return True
         except Exception as e:
             print(f"Error loading filtered Steam cache: {e}")
@@ -122,26 +123,49 @@ class SteamCacheManager:
         
         self.main_window.normalized_steam_match_index = {}
         
+        # Debug counters
+        total_titles = len(self.main_window.steam_title_cache)
+        skipped_count = 0
+        added_count = 0
+        
         for app_id, title in self.main_window.steam_title_cache.items():
             # Skip empty titles
             if not title:
+                skipped_count += 1
+                print(f"Skipping empty title for app ID: {app_id}")
                 continue
-                
+            
             # Normalize the title (do not use stemmer for Steam names to prevent improper culling)
             normalized = normalize_name_for_matching(title, None)
             
-            # Skip very short normalized names
-            if not normalized or len(normalized) < 5:
+            # Special handling for short titles (4 chars or less)
+            # These are often acronyms or unique names that should be preserved
+            if len(title) <= 4:
+                print(f"Special handling for short title: '{title}' -> '{normalized}'")
+                # For very short titles, we'll keep them even if they'd normally be filtered
+                self.main_window.normalized_steam_match_index[normalized] = {"id": app_id, "name": title}
+                added_count += 1
                 continue
                 
-            # Skip if normalized name is too generic
-            if normalized in ["game", "about", "the", "and", "for", "with"]:
+            # Skip empty normalized names
+            if not normalized:
+                skipped_count += 1
+                print(f"Skipping empty normalized name: '{title}' -> '{normalized}'")
+                continue
+                
+            # Skip if normalized name is too generic (single word that's too common)
+            generic_words = ["game", "about", "the", "and", "for", "with"]
+            if normalized in generic_words and len(normalized.split()) == 1:
+                skipped_count += 1
+                print(f"Skipping generic normalized name: '{title}' -> '{normalized}'")
                 continue
                 
             # Add to normalized index
             self.main_window.normalized_steam_match_index[normalized] = {"id": app_id, "name": title}
+            added_count += 1
         
         print(f"Created normalized index with {len(self.main_window.normalized_steam_match_index)} entries")
+        print(f"Total titles: {total_titles}, Added: {added_count}, Skipped: {skipped_count}")
         
         # Save the normalized index to a cache file
         self.save_normalized_steam_index()
@@ -155,13 +179,12 @@ class SteamCacheManager:
             return False
         
         try:
-            # Determine the cache file path
-            if hasattr(self.main_window, 'filtered_steam_cache_file_path') and self.main_window.filtered_steam_cache_file_path:
-                dir_path = os.path.dirname(self.main_window.filtered_steam_cache_file_path)
-                cache_file = os.path.join(dir_path, NORMALIZED_INDEX_CACHE)
-            else:
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                cache_file = os.path.join(script_dir, NORMALIZED_INDEX_CACHE)
+            # Get the app's root directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            app_root_dir = os.path.dirname(os.path.dirname(script_dir))
+            
+            # Save to app root directory
+            cache_file = os.path.join(app_root_dir, NORMALIZED_INDEX_CACHE)
             
             # Save the index
             with open(cache_file, 'w', encoding='utf-8') as f:
@@ -175,17 +198,15 @@ class SteamCacheManager:
 
     def load_normalized_steam_index(self):
         """Load the normalized index from a cache file if it exists"""
-        # Determine the cache file path
-        if hasattr(self.main_window, 'filtered_steam_cache_file_path') and self.main_window.filtered_steam_cache_file_path:
-            dir_path = os.path.dirname(self.main_window.filtered_steam_cache_file_path)
-            cache_file = os.path.join(dir_path, NORMALIZED_INDEX_CACHE)
-        else:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            cache_file = os.path.join(script_dir, NORMALIZED_INDEX_CACHE)
+        # Get the app's root directory
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        app_root_dir = os.path.dirname(os.path.dirname(script_dir))
         
-        # Check if the file exists
+        # Check if the file exists in the app root
+        cache_file = os.path.join(app_root_dir, NORMALIZED_INDEX_CACHE)
+        
         if not os.path.exists(cache_file):
-            print(f"Normalized index cache file not found: {cache_file}")
+            print(f"Normalized index cache file not found at app root: {cache_file}")
             return False
         
         try:

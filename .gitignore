@@ -1,4 +1,3 @@
-Python/config.ini
 Python/configparser.ConfigParser
 Python/__pycache__/
 Python/ui/__pycache__/
@@ -9,6 +8,12 @@ Python/steam_filtered.txt
 Python/steam_normalized_index.json
 Python/app.log
 GitDeploy.*
+.gitignore
+*.ini
 *.bak
 *.old
 *.del
+*.index
+*.log
+*.json
+GitDeploy.*

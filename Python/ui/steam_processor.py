@@ -2,6 +2,7 @@ import os
 import json
 import re
 from PyQt6.QtWidgets import QFileDialog
+from PyQt6.QtCore import QCoreApplication
 from Python.ui.name_utils import normalize_name_for_matching
 from Python.ui.steam_cache import STEAM_FILTERED_TXT # Only import constant, not function
 
@@ -14,17 +15,31 @@ class SteamProcessor:
         """Prompt user to select and process Steam JSON file"""
         file_path, _ = QFileDialog.getOpenFileName(self.main_window, "Select Steam JSON file", "", "JSON Files (*.json);;All Files (*)")
         if file_path:
-            self.process_steam_json_file(file_path)
+            # Disable UI elements
+            self._disable_ui_elements()
+            self.main_window.statusBar().showMessage("Please be patient as the steam.json file is cached...", 0)
+            
+            # Process the file
+            success = self.process_steam_json_file(file_path)
+            
+            # Re-enable UI elements
+            self._enable_ui_elements()
+            
+            # Update status bar
+            if success:
+                self.main_window.statusBar().showMessage("Steam.json file indexing complete.", 5000)
+            else:
+                self.main_window.statusBar().showMessage("Steam.json file indexing failed.", 5000)
 
     def process_steam_json_file(self, input_json_path: str):
         """Process a Steam JSON file to extract title data"""
         if not os.path.exists(input_json_path):
             self.main_window.statusBar().showMessage(f"Steam JSON file not found: {input_json_path}", 5000)
             return False
-            
+        
         try:
             # Process the file
-            self.main_window.statusBar().showMessage(f"Processing Steam JSON: {input_json_path}", 5000)
+            self.main_window.statusBar().showMessage(f"Processing Steam JSON: {input_json_path}", 0)
             
             # Store the path for later reference
             self.main_window.steam_json_file_path = input_json_path
@@ -103,8 +118,11 @@ class SteamProcessor:
             ]
             compiled_regex_exclusions = [re.compile(p, re.IGNORECASE) for p in regex_exclusion_patterns]
             
-            # Filter out non-games and empty names
+            # Filter out non-games, empty names, and duplicates
             filtered_apps = []
+            seen_app_ids = set()  # Track seen app IDs to filter duplicates
+            seen_app_names = {}   # Track seen app names to detect duplicates
+            
             for app in apps_list:
                 if not isinstance(app, dict):
                     print(f"Skipping app - Not a dictionary: {app}")
@@ -117,7 +135,34 @@ class SteamProcessor:
                 if not app_id or not app_name or not app_name.strip():
                     print(f"Skipping app '{app_name}' (ID: {app_id}) - Missing ID/Name or empty name.")
                     continue
-                    
+                
+                # Convert app_id to string
+                app_id = str(app_id)
+                
+                # Skip duplicates by app_id
+                if app_id in seen_app_ids:
+                    print(f"Skipping duplicate app ID: {app_id} - '{app_name}'")
+                    continue
+                
+                # Check for duplicate names (case insensitive)
+                app_name_lower = app_name.lower()
+                if app_name_lower in seen_app_names:
+                    existing_id = seen_app_names[app_name_lower]
+                    print(f"Found duplicate name: '{app_name}' - IDs: {existing_id} and {app_id}")
+                    # Keep the one with the lower app_id (usually the original/main game)
+                    if int(app_id) < int(existing_id):
+                        # Replace the existing entry
+                        print(f"Keeping app ID {app_id} for '{app_name}' (lower ID)")
+                        # Remove the old entry from filtered_apps
+                        filtered_apps = [app for app in filtered_apps if app[0] != existing_id]
+                        # Update the seen_app_ids and seen_app_names
+                        seen_app_ids.remove(existing_id)
+                        seen_app_names[app_name_lower] = app_id
+                    else:
+                        # Skip this entry
+                        print(f"Keeping existing app ID {existing_id} for '{app_name}' (lower ID)")
+                        continue
+                
                 # Skip non-games if type is specified
                 app_type = app.get('type', '').lower()
                 if app_type and app_type not in ('game', 'dlc', 'application'):
@@ -130,7 +175,6 @@ class SteamProcessor:
                     continue
                 
                 # Skip if name contains exclusion terms
-                app_name_lower = app_name.lower()
                 if any(term in app_name_lower for term in exclusion_terms):
                     print(f"Skipping app '{app_name}' (ID: {app_id}) - Contains exclusion term.")
                     continue
@@ -147,8 +191,9 @@ class SteamProcessor:
                     print(f"Skipping app with only common words: {app_name} (ID: {app_id})")
                     continue
                 
-                # Convert app_id to string
-                app_id = str(app_id)
+                # Add to tracking sets
+                seen_app_ids.add(app_id)
+                seen_app_names[app_name_lower] = app_id
                 
                 # Add to filtered list
                 filtered_apps.append((app_id, app_name))
@@ -156,11 +201,15 @@ class SteamProcessor:
                 # Add to cache
                 self.main_window.steam_title_cache[app_id] = app_name
             
-            print(f"Filtered to {len(filtered_apps)} game apps")
+            print(f"Filtered to {len(filtered_apps)} unique game apps (removed {len(apps_list) - len(filtered_apps)} entries)")
             
-            # Save filtered data to a text file (more reliable than JSON)
-            cache_file_path = os.path.join(os.path.dirname(input_json_path), STEAM_FILTERED_TXT)
-            print(f"Attempting to save filtered Steam data to: {cache_file_path}")
+            # Get the app's root directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            app_root_dir = os.path.dirname(os.path.dirname(script_dir))
+            
+            # Save filtered data to a text file in the app root directory
+            cache_file_path = os.path.join(app_root_dir, STEAM_FILTERED_TXT)
+            print(f"Saving filtered Steam data to app root: {cache_file_path}")
             with open(cache_file_path, 'w', encoding='utf-8') as f:
                 for app_id, app_name in filtered_apps:
                     # Use tab as separator (less likely to appear in game names than pipe)
@@ -175,9 +224,6 @@ class SteamProcessor:
             self.main_window.filtered_steam_cache_file_path = cache_file_path
             print(f"Set filtered_steam_cache_file_path to: {cache_file_path}")
             
-            # Log success
-            self.main_window.statusBar().showMessage(f"Processed {len(self.main_window.steam_title_cache)} Steam titles and saved to {cache_file_path}", 5000)
-            
             # Create normalized index for better matching
             self.steam_cache_manager.create_normalized_steam_index()
             
@@ -189,3 +235,35 @@ class SteamProcessor:
             traceback.print_exc()
             self.main_window.statusBar().showMessage(f"Error processing Steam JSON: {str(e)}", 5000)
             return False
+
+    def _disable_ui_elements(self):
+        """Disable UI elements during processing"""
+        # Disable main tabs
+        for i in range(self.main_window.tabs.count()):
+            tab = self.main_window.tabs.widget(i)
+            tab.setEnabled(False)
+        
+        # Disable specific buttons
+        if hasattr(self.main_window, 'process_steam_json_button'):
+            self.main_window.process_steam_json_button.setEnabled(False)
+        if hasattr(self.main_window, 'update_steam_json_button'):
+            self.main_window.update_steam_json_button.setEnabled(False)
+        
+        # Process events to update UI
+        QCoreApplication.processEvents()
+
+    def _enable_ui_elements(self):
+        """Re-enable UI elements after processing"""
+        # Re-enable main tabs
+        for i in range(self.main_window.tabs.count()):
+            tab = self.main_window.tabs.widget(i)
+            tab.setEnabled(True)
+        
+        # Re-enable specific buttons
+        if hasattr(self.main_window, 'process_steam_json_button'):
+            self.main_window.process_steam_json_button.setEnabled(True)
+        if hasattr(self.main_window, 'update_steam_json_button'):
+            self.main_window.update_steam_json_button.setEnabled(True)
+        
+        # Process events to update UI
+        QCoreApplication.processEvents()

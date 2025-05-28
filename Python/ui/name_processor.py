@@ -38,7 +38,7 @@ class NameProcessor:
             re.compile(r'\s+(?:build|bulid|bld)\s+[0-9]+$', re.IGNORECASE),  # Build numbers
             re.compile(r'\s+(?:early\s*access)$', re.IGNORECASE),  # Early Access
             re.compile(r'\s+(?:alpha|beta|demo|trial|playtest|preview)$', re.IGNORECASE),  # Development stages
-            re.compile(r'\s+(?:remaster(?:ed)?|hd)$', re.IGNORECASE),  # Remastered versions
+            #re.compile(r'\s+(?:remaster(?:ed)?|hd)$', re.IGNORECASE),  # Remastered versions
         ]
         
         # Patterns for match name normalization
@@ -222,7 +222,7 @@ class NameProcessor:
             # Define specific complete phrases to remove
             specific_phrases = [
                 "early access", "demo", "trial", "playtest", "preview",
-                "remastered", "remaster", "hd", "developer", "dev", "prerelease"
+                "remaster", "hd", "developer", "dev", "prerelease"
             ]
             
             # Check for specific phrases at the end with delimiters

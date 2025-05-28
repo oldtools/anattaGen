@@ -1,88 +1,54 @@
-"# This is a new version of main_window.py" 
-
-import sys
-import os
-import re
-import traceback
 from PyQt6.QtWidgets import (
-    QMainWindow, QTabWidget, QWidget, QFileDialog, 
-    QMenu, QTableWidgetItem, QStatusBar, QMessageBox
+    QApplication, QMainWindow, QTabWidget, QWidget, QStatusBar, 
+    QMessageBox, QMenu, QFileDialog, QTableWidgetItem, QCheckBox,
+    QProgressDialog
 )
 from PyQt6.QtCore import Qt, QCoreApplication
+from PyQt6.QtGui import QCursor
+import os
 
-# NLTK for Porter Stemmer
-from nltk.stem.porter import PorterStemmer
-
-# Import the UI modules
+# Import tab population functions
 from Python.ui.setup_tab_ui import populate_setup_tab
 from Python.ui.deployment_tab_ui import populate_deployment_tab
 from Python.ui.editor_tab_ui import populate_editor_tab
-from Python.ui.config_manager import load_initial_config, show_import_configuration_dialog, show_save_configuration_dialog
-from Python.ui.index_manager import save_index, backup_index, delete_all_indexes, load_index
-from Python.ui.name_utils import normalize_name_for_matching
-from Python.ui.game_indexer import (
-    index_sources_with_ui_updates, get_editor_table_data, load_set_file, 
-    add_executable_to_editor_table, create_status_widget
-)
-from Python.ui.steam_cache import SteamCacheManager, STEAM_FILTERED_TXT, NORMALIZED_INDEX_CACHE
-from Python.ui.steam_processor import SteamProcessor
-from Python.ui.steam_utils import locate_and_exclude_manager_config
+from Python.ui.config_manager import load_initial_config
 
 class MainWindow(QMainWindow):
-    # Column indices for the editor table
-    COL_INCLUDE = 0         # Checkbox
-    COL_EXEC_NAME = 1       # Executable Name
-    COL_DIRECTORY = 2       # Directory (Executable Path)
-    COL_STEAM_NAME = 3      # Steam Name
-    COL_NAME_OVERRIDE = 4   # Name Override
-    COL_OPTIONS = 5         # Options
-    COL_ARGUMENTS = 6       # Arguments
-    COL_STEAM_ID = 7        # Steam ID
-    COL_P1_PROFILE = 8      # P1 Profile
-    COL_P2_PROFILE = 9      # P2 Profile
-    COL_DESKTOP_CTRL = 10   # Desktop CTRL
-    COL_GAME_MON_CFG = 11   # Game Monitor CFG
-    COL_DESK_MON_CFG = 12   # Desktop Monitor CFG
-    COL_POST_1 = 13         # Post-Launch App 1
-    COL_POST_2 = 14         # Post-Launch App 2
-    COL_POST_3 = 15         # Post-Launch App 3
-    COL_PRE_1 = 16          # Pre-Launch App 1
-    COL_PRE_2 = 17          # Pre-Launch App 2
-    COL_PRE_3 = 18          # Pre-Launch App 3
-    COL_JUST_AFTER = 19     # Just After App
-    COL_JUST_BEFORE = 20    # Just Before App
-    # COL_AS_ADMIN = 21 (Implicitly handled by add_executable_to_editor_table)
-    # COL_NO_TB = 22    (Implicitly handled by add_executable_to_editor_table)
-
     def __init__(self):
         super().__init__()
         
-        # Initialize data structures
+        # Initialize sets for indexing
+        self.release_groups_set = set()
+        self.folder_exclude_set = set()
+        self.exclude_exe_set = set()
+        self.demoted_set = set()
+        self.found_executables_cache = set()
+        
+        # Initialize Steam caches
         self.steam_title_cache = {}
         self.normalized_steam_match_index = {}
-        self.filtered_steam_cache_file_path = None # Initialize Steam cache file path
-        self.steam_json_file_path = None # Initialize Steam JSON file path
-        self.found_executables_cache = set()
-
-        # Initialize Steam-related managers
-        self.steam_cache_manager = SteamCacheManager(self)
-        self.steam_processor = SteamProcessor(self, self.steam_cache_manager)
         
-        # Initialize stemmer for text normalization
-        self.stemmer = PorterStemmer()
-        
-        # Load set files early
+        # Load sets from files
         self._load_set_files()
         
-        # Setup UI
         self._setup_ui()
-        
-        # Load initial configuration
         load_initial_config(self)
         
-        # Populate the editor table from index if it exists
-        self._populate_editor_table_from_index()
+        # Initialize Steam cache manager
+        from Python.ui.steam_cache import SteamCacheManager
+        self.steam_cache_manager = SteamCacheManager(self)
+        
+        # Load Steam cache
+        self._load_steam_cache()
 
+    def _load_steam_cache(self):
+        """Load Steam cache from files"""
+        # Load filtered Steam cache
+        self.steam_cache_manager.load_filtered_steam_cache()
+        
+        # Load normalized Steam index
+        self.steam_cache_manager.load_normalized_steam_index()
+        
     def _setup_ui(self):
         self.setWindowTitle("Game Environment Manager")
         self.setGeometry(100, 100, 950, 750)
@@ -99,493 +65,204 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.editor_tab, "Editor")
 
         populate_setup_tab(self)
-        populate_deployment_tab(self)
+        populate_deployment_tab(self, self.tabs)  # Pass self.tabs as the tab_widget argument
         populate_editor_tab(self)
 
         # Add Status Bar
         self.setStatusBar(QStatusBar(self))
         self.statusBar().showMessage("Ready")
-
-    def _load_set_files(self):
-        """Load all set files (exclude_exe.set, folder_exclude.set, demoted.set, release_groups.set)"""
-        # load_set_file is imported at the top of the file.
         
-        # Load exclusion lists
-        self.exclude_exe_set = load_set_file('Python/exclude_exe.set')
-        self.folder_exclude_set = load_set_file('Python/folder_exclude.set')
-        self.demoted_set = load_set_file('Python/demoted.set')
-        self.release_groups_set = load_set_file('Python/release_groups.set')
+    def _add_new_app_dialog(self, line_edit):
+        """Handle the 'Add New...' option in app selection dropdowns"""
+        # This is a placeholder for the actual implementation
+        # It will be called when the user selects 'Add New...' in a dropdown
+        pass
         
-        # Log the counts
-        print(f"Loaded set files: exclude_exe.set ({len(self.exclude_exe_set)}), "
-              f"folder_exclude.set ({len(self.folder_exclude_set)}), "
-              f"demoted.set ({len(self.demoted_set)}), "
-              f"release_groups.set ({len(self.release_groups_set)})")
-
-    def _add_new_app_dialog(self, target_line_edit, app_type_name):
-        # QFileDialog needs a parent window
-        path, _ = QFileDialog.getOpenFileName(self, f"Select Custom {app_type_name} Application")
-        if path:
-            target_line_edit.setText(path)
-            print(f"Custom {app_type_name} selected: {path}")
-
-    def _normalize_name_for_matching(self, name: str) -> str:
-        # Use the utility function from name_utils.py
-        return normalize_name_for_matching(name, self.stemmer)
-
+    def _prompt_and_process_steam_json(self):
+        """Prompt the user to select a Steam JSON file and process it"""
+        from Python.ui.steam_integration import prompt_and_process_steam_json
+        prompt_and_process_steam_json(self)
+        
+    def _update_steam_json_cache(self):
+        """Update the Steam JSON cache"""
+        # This method should update the Steam JSON cache
+        self.statusBar().showMessage("Updating Steam JSON cache...", 5000)
+        # In a real implementation, this would call a function to update the cache
+        
+    def _locate_and_exclude_manager_config(self):
+        """Locate and exclude games from other managers' configurations"""
+        from Python.ui.steam_utils import locate_and_exclude_manager_config
+        locate_and_exclude_manager_config(self)
+        
+    def _get_editor_table_data(self):
+        """Get the data from the editor table"""
+        data = []
+        
+        # Iterate through all rows in the table
+        for row in range(self.editor_table.rowCount()):
+            row_data = {}
+            
+            # Get include checkbox state (column 0)
+            include_widget = self.editor_table.cellWidget(row, 0)
+            if include_widget and hasattr(include_widget, 'findChild'):
+                checkbox = include_widget.findChild(QCheckBox)
+                if checkbox:
+                    row_data["include"] = checkbox.isChecked()
+                else:
+                    row_data["include"] = False
+            else:
+                row_data["include"] = False
+            
+            # Get text from columns 1-7
+            row_data["executable"] = self.editor_table.item(row, 1).text() if self.editor_table.item(row, 1) else ""
+            row_data["directory"] = self.editor_table.item(row, 2).text() if self.editor_table.item(row, 2) else ""
+            row_data["steam_title"] = self.editor_table.item(row, 3).text() if self.editor_table.item(row, 3) else ""
+            row_data["name_override"] = self.editor_table.item(row, 4).text() if self.editor_table.item(row, 4) else ""
+            row_data["options"] = self.editor_table.item(row, 5).text() if self.editor_table.item(row, 5) else ""
+            row_data["arguments"] = self.editor_table.item(row, 6).text() if self.editor_table.item(row, 6) else ""
+            row_data["steam_id"] = self.editor_table.item(row, 7).text() if self.editor_table.item(row, 7) else ""
+            
+            # Get as_admin and no_tb from columns 8-9 (if they exist)
+            row_data["as_admin"] = False  # Default value
+            row_data["no_tb"] = False     # Default value
+            
+            data.append(row_data)
+        
+        return data
+        
+    def _index_sources(self):
+        """Index sources for games"""
+        from Python.ui.game_indexer import index_sources
+        index_sources(self)
+        
+    def _load_index(self):
+        """Load index file into editor table"""
+        from Python.ui.index_manager import load_index
+        data = load_index(self)
+        
+        # Clear the existing table
+        self.editor_table.setRowCount(0)
+        
+        # Populate the table with the loaded data
+        for row_data in data:
+            # Get current row count
+            row = self.editor_table.rowCount()
+            self.editor_table.insertRow(row)
+            
+            # Create include checkbox
+            from Python.ui.game_indexer import create_status_widget
+            include_widget = create_status_widget(self, row_data.get("include", False), row, 0)
+            self.editor_table.setCellWidget(row, 0, include_widget)
+            
+            # Set text items
+            self.editor_table.setItem(row, 1, QTableWidgetItem(row_data.get("executable", "")))
+            self.editor_table.setItem(row, 2, QTableWidgetItem(row_data.get("directory", "")))
+            self.editor_table.setItem(row, 3, QTableWidgetItem(row_data.get("steam_title", "")))
+            self.editor_table.setItem(row, 4, QTableWidgetItem(row_data.get("name_override", "")))
+            self.editor_table.setItem(row, 5, QTableWidgetItem(row_data.get("options", "")))
+            self.editor_table.setItem(row, 6, QTableWidgetItem(row_data.get("arguments", "")))
+            self.editor_table.setItem(row, 7, QTableWidgetItem(row_data.get("steam_id", "")))
+            
+            # Set as_admin and no_tb if they exist
+            # These would typically be checkboxes or other widgets
+        
+        self.statusBar().showMessage(f"Loaded {len(data)} entries", 3000)
+        
+    def _save_editor_table_to_index(self):
+        """Save the editor table data to the index file"""
+        from Python.ui.index_manager import save_index
+        
+        # Get the data from the editor table
+        data = self._get_editor_table_data()
+        
+        # Save the data to the index file
+        save_index(self)
+        
+        self.statusBar().showMessage("Index saved", 3000)
+        
+    def _on_delete_indexes(self):
+        """Delete index files"""
+        # This is a placeholder for the actual implementation
+        # It will be called when the user clicks "Delete Indexes" in the editor tab
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Icon.Question)
+        msg_box.setText("Are you sure you want to delete all index files?")
+        msg_box.setWindowTitle("Confirm Delete")
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+        
+        if msg_box.exec() == QMessageBox.StandardButton.Yes:
+            # Delete index files
+            from Python.ui.index_manager import delete_indexes
+            delete_indexes(self)
+            self.statusBar().showMessage("Index files deleted", 3000)
+        
+    def _on_clear_listview(self):
+        """Clear the editor table"""
+        # This is a placeholder for the actual implementation
+        # It will be called when the user clicks "Clear List-View" in the editor tab
+        self.editor_table.setRowCount(0)
+        self.statusBar().showMessage("List view cleared", 3000)
+        
+    def _regenerate_all_names(self):
+        """Regenerate all name overrides in the table"""
+        # This is a placeholder for the actual implementation
+        # It will be called when the user clicks "Regenerate All Names" in the editor tab
+        from Python.ui.name_processor import regenerate_all_names
+        regenerate_all_names(self)
+        self.statusBar().showMessage("All names regenerated", 3000)
+        
     def _on_editor_table_cell_left_click(self, row, column):
-        """Handle left-click events on editor table cells"""
-        # File selection columns
-        file_selection_columns = {
-            self.COL_DIRECTORY: "Select Game Executable",
-            self.COL_P1_PROFILE: "Select Player 1 Profile",
-            self.COL_P2_PROFILE: "Select Player 2 Profile",
-            self.COL_DESKTOP_CTRL: "Select Desktop Control Profile",
-            self.COL_GAME_MON_CFG: "Select Game Monitor Config",
-            self.COL_DESK_MON_CFG: "Select Desktop Monitor Config",
-            self.COL_POST_1: "Select Post-Launch App 1",
-            self.COL_POST_2: "Select Post-Launch App 2",
-            self.COL_POST_3: "Select Post-Launch App 3",
-            self.COL_PRE_1: "Select Pre-Launch App 1",
-            self.COL_PRE_2: "Select Pre-Launch App 2",
-            self.COL_PRE_3: "Select Pre-Launch App 3",
-            self.COL_JUST_AFTER: "Select Just After App",
-            self.COL_JUST_BEFORE: "Select Just Before App"
-        }
+        """Handle left-click on a cell in the editor table"""
+        # This is a placeholder for the actual implementation
+        # It will be called when the user left-clicks on a cell in the editor table
+        pass
         
-        if column in file_selection_columns:
-            # Get current value
-            current_value = self.editor_table.item(row, column).text() if self.editor_table.item(row, column) else ""
-            
-            # Determine file filter based on column
-            file_filter = "All Files (*)"
-            if column == self.COL_DIRECTORY:
-                file_filter = "Executables (*.exe);;All Files (*)"
-            elif column in [self.COL_P1_PROFILE, self.COL_P2_PROFILE, self.COL_DESKTOP_CTRL]:  # Profile columns
-                file_filter = "Profile Files (*.json *.xml *.cfg);;All Files (*)"
-            elif column in [self.COL_GAME_MON_CFG, self.COL_DESK_MON_CFG]:  # Monitor config columns
-                file_filter = "Config Files (*.cfg *.ini *.json);;All Files (*)"
-            elif column in [self.COL_POST_1, self.COL_POST_2, self.COL_POST_3, 
-                            self.COL_PRE_1, self.COL_PRE_2, self.COL_PRE_3, 
-                            self.COL_JUST_AFTER, self.COL_JUST_BEFORE]:  # App columns
-                file_filter = "Executables (*.exe *.bat *.cmd);;All Files (*)"
-            
-            # Show file dialog
-            new_path, _ = QFileDialog.getOpenFileName(
-                self, 
-                file_selection_columns[column], 
-                os.path.dirname(current_value) if current_value else "", 
-                file_filter
-            )
-            
-            if new_path:
-                # Update the cell with the new path
-                self.editor_table.setItem(row, column, QTableWidgetItem(new_path))
-                
-                # Special handling for Directory column
-                if column == self.COL_DIRECTORY:
-                    # Update executable name
-                    exec_name = os.path.basename(new_path)
-                    self.editor_table.setItem(row, self.COL_EXEC_NAME, QTableWidgetItem(exec_name))
-                    
-                    # Try to match with Steam
-                    if hasattr(self, 'normalized_steam_match_index') and self.normalized_steam_match_index:
-                        dir_name = os.path.basename(os.path.dirname(new_path))
-                        norm_dir_name = normalize_name_for_matching(dir_name, self.stemmer)
-                        
-                        if norm_dir_name in self.normalized_steam_match_index:
-                            steam_match = self.normalized_steam_match_index[norm_dir_name]["name"]
-                            steam_id = self.normalized_steam_match_index[norm_dir_name]["id"]
-                            
-                            # Update Steam name and ID
-                            self.editor_table.setItem(row, self.COL_STEAM_NAME, QTableWidgetItem(steam_match))
-                            self.editor_table.setItem(row, self.COL_STEAM_ID, QTableWidgetItem(steam_id))
-                            
-                            # Clear name override if we have a Steam match
-                            self.editor_table.setItem(row, self.COL_NAME_OVERRIDE, QTableWidgetItem(""))
-            
-                self.statusBar().showMessage(f"Updated {file_selection_columns[column]}: {new_path}", 3000)
-
     def _on_editor_table_custom_context_menu(self, position):
-        """Handle right-click context menu in the editor table"""
-        # Get the row and column that was clicked
-        row = self.editor_table.rowAt(position.y())
-        col = self.editor_table.columnAt(position.x())
-        
-        # Create context menu
+        """Handle right-click on the editor table"""
+        # This is a placeholder for the actual implementation
+        # It will be called when the user right-clicks on the editor table
         context_menu = QMenu(self)
         
-        if row >= 0:
-            item = self.editor_table.item(row, self.COL_EXEC_NAME)  # The name column
-            if item and item.text():
-                omit_action = context_menu.addAction(f"Omit \"{item.text()}\"")
-                omit_action.triggered.connect(lambda: self._handle_omit_action(row, col, item.text()))
-                
-                context_menu.exec(self.editor_table.viewport().mapToGlobal(position))
-
-    def _handle_omit_action(self, row, column, item_name):
-        print(f"Omitting {item_name} from consideration")
-        # Add to folder_exclude_set (not usable here)
-        self.folder_exclude_set.add(item_name)
+        # Add actions to the menu
+        edit_action = context_menu.addAction("Edit")
+        delete_action = context_menu.addAction("Delete")
         
-        # Remove the row from the table
-        self.editor_table.removeRow(row)
-        self.statusBar().showMessage(f"Omitted {item_name} from consideration", 3000)
-
-    def _on_append_index(self):
-        index_sources_with_ui_updates(self)
-        data = get_editor_table_data(self)
-        # Append to existing index file if it exists
-        if os.path.exists('current.index'):
-            print("Appending to existing index file")
-            backup_index()
+        # Show the menu at the cursor position
+        action = context_menu.exec(QCursor.pos())
         
-        save_index(self, data)
-
-    def _on_clear_listview(self):
-        # Clear the editor table
-        self.editor_table.setRowCount(0)
-        self.statusBar().showMessage("Cleared editor table", 3000)
-
-    def _on_delete_indexes(self):
-        delete_all_indexes(self)
-
+        # Handle the selected action
+        if action == edit_action:
+            # Edit the selected row
+            pass
+        elif action == delete_action:
+            # Delete the selected row
+            pass
+        
+    def _on_editor_table_header_click(self, column):
+        """Handle click on a header in the editor table"""
+        # This is a placeholder for the actual implementation
+        # It will be called when the user clicks on a header in the editor table
+        pass
+        
     def _on_editor_table_edited(self, item):
-        print(f"Editor table edited: {item.row()}, {item.column()}, {item.text()}")
+        """Handle editing of a cell in the editor table"""
+        # This is a placeholder for the actual implementation
+        # It will be called when a cell in the editor table is edited
+        pass
 
-    def _import_configuration_dialog(self):
-        show_import_configuration_dialog(self)
-
-    def _show_save_configuration_dialog(self):
-        show_save_configuration_dialog(self)
-
-    def _load_index(self):
-        load_index(self)
-
-    def _load_filtered_steam_cache(self):
-        return self.steam_cache_manager.load_filtered_steam_cache()
-
-    def _prompt_and_process_steam_json(self):
-        self.steam_processor.prompt_and_process_steam_json()
-
-    def _process_steam_json_file(self, input_json_path: str):
-        self.steam_processor.process_steam_json_file(input_json_path)
-
-    def _locate_and_exclude_manager_config(self):
-        locate_and_exclude_manager_config(self)
-
-    def _load_set_file(self, filename: str) -> set:
-        return load_set_file(self, filename)
-
-    def _index_sources(self):
-        """Handle the Index Sources button click from the Deployment tab"""
-        # Show immediate feedback
-        self.statusBar().showMessage("Starting indexing process...", 3000)
-        print("Index Sources button clicked")
+    def _load_set_files(self):
+        """Load set files into memory"""
+        from Python.ui.game_indexer import load_set_file
         
-        # Process any pending UI events before starting the intensive operation
-        QCoreApplication.processEvents() # QCoreApplication moved to top imports
+        # Load release groups
+        self.release_groups_set = load_set_file("Python/release_groups.set")
         
-        # index_sources_with_ui_updates is imported at the top of the file.
-        # The try-except block for its import has been removed.
+        # Load folder exclusions
+        self.folder_exclude_set = load_set_file("Python/folder_exclude.set")
         
-        # Switch to the Editor tab first
-        try:
-            for i in range(self.tabs.count()):
-                if self.tabs.tabText(i) == "Editor":
-                    self.tabs.setCurrentIndex(i)
-                    print("Switched to Editor tab")
-                    break
-            
-            # Process events again to ensure tab switch is visible
-            QCoreApplication.processEvents()
-        except Exception as e:
-            print(f"Error switching tabs: {e}")
+        # Load executable exclusions
+        self.exclude_exe_set = load_set_file("Python/exclude_exe.set")
         
-        # Use the enhanced indexing function with UI updates
-        try:
-            print("Starting indexing with UI updates")
-            # This function handles its own progress dialog and UI updates
-            result = index_sources_with_ui_updates(self)
-            print(f"Indexing completed with result: {result}")
-        except Exception as e:
-            # QMessageBox and traceback are imported at the top of the file.
-            print(f"Exception during indexing: {e}")
-            traceback.print_exc()
-            QMessageBox.critical(self, "Indexing Error", f"An error occurred during indexing:\n{str(e)}")
-            self.statusBar().showMessage(f"Indexing failed: {str(e)}", 5000)
-
-    def _get_editor_table_data(self):
-        return get_editor_table_data(self.editor_table)
-
-    def _save_editor_table_to_index(self):
-        save_index(self, self._get_editor_table_data())
-
-    def _update_steam_json_cache(self):
-        self.steam_cache_manager.load_filtered_steam_cache()
-
-    def closeEvent(self, event):
-        self._save_editor_table_to_index()
-        event.accept()
-
-    def _populate_editor_table_from_index(self):
-        # If current.index exists, load it
-        if os.path.exists('current.index'):
-            try:
-                with open('current.index', 'r', encoding='utf-8') as f:
-                    for line in f:
-                        if line.strip():
-                            parts = line.strip().split('|')
-                            if len(parts) >= 8:
-                                # Convert string to boolean for checkbox values
-                                include_checked = parts[0].lower() == "true"
-                                exec_name = parts[1]
-                                directory = parts[2]
-                                steam_name = parts[3]
-                                name_override = parts[4]
-                                options = parts[5]
-                                arguments = parts[6]
-                                steam_id = parts[7]
-                                as_admin = parts[8].lower() == "true" if len(parts) > 8 else False
-                                no_tb = parts[9].lower() == "true" if len(parts) > 9 else False
-                                
-                                add_executable_to_editor_table(
-                                    self, include_checked, exec_name, directory, steam_name, 
-                                    name_override, options, arguments, steam_id, as_admin, no_tb
-                                )
-                
-                self.statusBar().showMessage("Loaded index file", 3000)
-            except Exception as e:
-                self.statusBar().showMessage(f"Error loading index: {e}", 5000)
-                print(f"Error loading index: {e}")
-
-    def _add_executable_to_editor_table(self, include_checked, exec_name, directory, steam_name, name_override, options, arguments, steam_id, as_admin=False, no_tb=False):
-        """Add an executable to the editor table (delegates to game_indexer.py)"""
-        # add_executable_to_editor_table is imported at the top of the file.
-        add_executable_to_editor_table(
-            self, include_checked, exec_name, directory, steam_name, 
-            name_override, options, arguments, steam_id, as_admin, no_tb
-        )
-
-    def _on_index_sources(self):
-        """Handle the Index Sources button click"""
-        # index_sources_with_ui_updates is imported at the top of the file.
-        index_sources_with_ui_updates(self)
-
-    def _on_editor_table_header_click(self, section):
-        """Handle clicks on table headers for multi-item selection"""
-        # File selection columns
-        file_selection_columns = {
-            8: "Select Player 1 Profile for All",  # P1 Profile
-            9: "Select Player 2 Profile for All",  # P2 Profile
-            10: "Select Desktop Control Profile for All",  # Desktop CTRL
-            11: "Select Game Monitor Config for All",  # Game Monitor CFG
-            12: "Select Desktop Monitor Config for All",  # Desktop Monitor CFG
-            13: "Select Post-Launch App 1 for All",  # Post 1
-            14: "Select Post-Launch App 2 for All",  # Post 2
-            15: "Select Post-Launch App 3 for All",  # Post 3
-            16: "Select Pre-Launch App 1 for All",  # Pre 1
-            17: "Select Pre-Launch App 2 for All",  # Pre 2
-            18: "Select Pre-Launch App 3 for All",  # Pre 3
-            19: "Select Just After App for All",  # Just After
-            20: "Select Just Before App for All"  # Just Before
-        }
-        
-        if section in file_selection_columns:
-            # Determine file filter based on column
-            file_filter = "All Files (*)"
-            if section in [8, 9, 10]:  # Profile columns
-                file_filter = "Profile Files (*.json *.xml *.cfg);;All Files (*)"
-            elif section in [11, 12]:  # Monitor config columns
-                file_filter = "Config Files (*.cfg *.ini *.json);;All Files (*)"
-            elif section in [13, 14, 15, 16, 17, 18, 19, 20]:  # App columns
-                file_filter = "Executables (*.exe *.bat *.cmd);;All Files (*)"
-            
-            # Show file dialog
-            new_path, _ = QFileDialog.getOpenFileName(
-                self, 
-                file_selection_columns[section], 
-                "", 
-                file_filter
-            )
-            
-            if new_path:
-                # Update all rows with the new path
-                for row in range(self.editor_table.rowCount()):
-                    self.editor_table.setItem(row, section, QTableWidgetItem(new_path))
-                
-                # Special handling for Directory column
-                if section == 2:
-                    # Update executable name for all rows
-                    for row in range(self.editor_table.rowCount()):
-                        exec_name = os.path.basename(new_path)
-                        self.editor_table.setItem(row, 1, QTableWidgetItem(exec_name))
-                    
-                    # Try to match with Steam for all rows
-                    if hasattr(self, 'normalized_steam_match_index') and self.normalized_steam_match_index:
-                        dir_name = os.path.basename(os.path.dirname(new_path))
-                        norm_dir_name = normalize_name_for_matching(dir_name, self.stemmer)
-                        
-                        if norm_dir_name in self.normalized_steam_match_index:
-                            steam_match = self.normalized_steam_match_index[norm_dir_name]["name"]
-                            steam_id = self.normalized_steam_match_index[norm_dir_name]["id"]
-                            
-                            # Update Steam name and ID for all rows
-                            for row in range(self.editor_table.rowCount()):
-                                self.editor_table.setItem(row, 3, QTableWidgetItem(steam_match))
-                                self.editor_table.setItem(row, 7, QTableWidgetItem(steam_id))
-                            
-                            # Clear name override if we have a Steam match
-                            for row in range(self.editor_table.rowCount()):
-                                self.editor_table.setItem(row, 4, QTableWidgetItem(""))
-
-    def _regenerate_name(self, row):
-        """Regenerate the name override based on executable path or Steam name"""
-        from Python.ui.name_processor import NameProcessor
-        
-        # Get executable path and Steam name
-        exec_path_item = self.editor_table.item(row, self.COL_DIRECTORY)
-        exec_path = exec_path_item.text() if exec_path_item else ""
-        steam_name_item = self.editor_table.item(row, self.COL_STEAM_NAME)
-        steam_name = steam_name_item.text() if steam_name_item else ""
-        
-        # Create a name processor
-        name_processor = NameProcessor(
-            release_groups_set=self.release_groups_set,
-            folder_exclude_set=self.folder_exclude_set
-        )
-        
-        # Generate name override
-        if steam_name:
-            # If we have a Steam name, use it directly but make it safe for Windows filenames
-            name_override = name_processor.get_display_name(steam_name)
-            print(f"Regenerated name override from Steam name: '{steam_name}' -> '{name_override}'")
-        else:
-            # Otherwise, derive from path with more aggressive cleaning
-            dir_path = os.path.dirname(exec_path) if os.path.isfile(exec_path) else exec_path
-            dir_name = os.path.basename(dir_path)
-            name_override = name_processor.get_display_name(dir_name)
-            print(f"Regenerated name override from path: '{dir_path}' -> '{name_override}'")
-        
-        # Update the name override
-        self.editor_table.setItem(row, self.COL_NAME_OVERRIDE, QTableWidgetItem(name_override))
-        self.statusBar().showMessage(f"Regenerated name: {name_override}", 3000)
-
-    def _regenerate_all_names(self):
-        """Regenerate all name overrides in the editor table"""
-        row_count = self.editor_table.rowCount()
-        if row_count == 0:
-            self.statusBar().showMessage("No entries to process", 3000)
-            return
-        
-        for row in range(row_count):
-            self._regenerate_name(row)
-        
-        self.statusBar().showMessage(f"Regenerated {row_count} names", 3000)
-
-    def _debug_set_files(self):
-        """Debug method to print the contents of set files"""
-        print("\nDEBUG: Set file contents")
-        print("exclude_exe.set items:")
-        for item in sorted(self.exclude_exe_set):
-            print(f"  - '{item}'")
-        
-        print("\nfolder_exclude.set items:")
-        for item in sorted(self.folder_exclude_set):
-            print(f"  - '{item}'")
-        
-        print("\ndemoted.set items:")
-        for item in sorted(self.demoted_set):
-            print(f"  - '{item}'")
-        
-        print("\nrelease_groups.set items:")
-        for item in sorted(self.release_groups_set):
-            print(f"  - '{item}'")
-        
-        self.statusBar().showMessage("Set file contents printed to console", 3000)
-
-    def _debug_steam_matching(self):
-        """Debug method to test Steam matching for a sample directory"""
-        print("\nDEBUG: Steam Matching Test")
-        
-        if not hasattr(self, 'normalized_steam_match_index') or not self.normalized_steam_match_index:
-            print("No normalized Steam match index available. Please load Steam data first.")
-            self.statusBar().showMessage("No Steam data loaded", 3000)
-            return
-        
-        # Get all directories from the editor table
-        directories = []
-        for row in range(self.editor_table.rowCount()):
-            dir_path_item = self.editor_table.item(row, self.COL_DIRECTORY)
-            if dir_path_item:
-                dir_path = dir_path_item.text()
-                if dir_path and os.path.exists(dir_path):
-                    dir_name = os.path.basename(os.path.dirname(dir_path))
-                    directories.append((row, dir_path, dir_name))
-        
-        if not directories:
-            print("No directories found in editor table")
-            self.statusBar().showMessage("No directories to test", 3000)
-            return
-        
-        # Test matching for each directory
-        match_count = 0
-        for row, dir_path, dir_name in directories:
-            from Python.ui.name_utils import normalize_name_for_matching
-            norm_dir_name = normalize_name_for_matching(dir_name, self.stemmer)
-            
-            print(f"\nTesting directory: '{dir_name}'")
-            print(f"Normalized name: '{norm_dir_name}'")
-            
-            if norm_dir_name in self.normalized_steam_match_index:
-                match_data = self.normalized_steam_match_index[norm_dir_name]
-                print(f"MATCH FOUND: {match_data['name']} (ID: {match_data['id']})")
-                match_count += 1
-                
-                # Update the editor table with the match
-                self.editor_table.setItem(row, self.COL_STEAM_NAME, QTableWidgetItem(match_data['name']))
-                self.editor_table.setItem(row, self.COL_STEAM_ID, QTableWidgetItem(match_data['id']))
-                
-                # Update name override if it's empty
-                name_override_item = self.editor_table.item(row, self.COL_NAME_OVERRIDE)
-                if not name_override_item or not name_override_item.text():
-                    from Python.ui.name_utils import make_safe_filename
-                    name_override = make_safe_filename(match_data['name'])
-                    self.editor_table.setItem(row, self.COL_NAME_OVERRIDE, QTableWidgetItem(name_override))
-            else:
-                print("No match found")
-                
-                # Try to find partial matches
-                partial_matches = []
-                for key in self.normalized_steam_match_index.keys():
-                    if norm_dir_name in key or key in norm_dir_name:
-                        partial_matches.append((key, self.normalized_steam_match_index[key]))
-                        if len(partial_matches) >= 3:  # Limit to 3 partial matches
-                            break
-                
-                if partial_matches:
-                    print("Potential partial matches:")
-                    for i, (key, data) in enumerate(partial_matches):
-                        print(f"  {i+1}. '{key}' -> {data['name']} (ID: {data['id']})")
-                
-                # If no Steam match, ensure name override is populated
-                name_override_item = self.editor_table.item(row, self.COL_NAME_OVERRIDE)
-                if not name_override_item or not name_override_item.text():
-                    from Python.ui.name_processor import NameProcessor
-                    
-                    # Create name processor
-                    name_processor = NameProcessor(
-                        release_groups_set=self.release_groups_set,
-                        folder_exclude_set=self.folder_exclude_set
-                    )
-                    
-                    # Get directory name
-                    # dir_path was already defined for the current row
-                    # dir_name was already defined for the current row
-                    
-                    # Process the name
-                    name_override = name_processor.get_display_name(dir_name) # Use existing dir_name
-                    self.editor_table.setItem(row, self.COL_NAME_OVERRIDE, QTableWidgetItem(name_override))
-        
-        print(f"\nMatching complete: {match_count} matches found out of {len(directories)} directories")
-        self.statusBar().showMessage(f"Steam matching test: {match_count}/{len(directories)} matches", 5000)
+        # Load demoted items
+        self.demoted_set = load_set_file("Python/demoted.set")

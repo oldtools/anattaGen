@@ -13,6 +13,10 @@ A desktop application to create isolated environments for PC games.
 *   Python
 *   Qt6 (for the main application)
 
+## Contributors
+
+*   **Vai-brainium "Quantum Quill"** - AI assistant that helped resolve critical UI and data processing issues.
+
 # But, why???
 
 ## 3 Reasons:
