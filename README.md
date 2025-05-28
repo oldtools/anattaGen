@@ -81,7 +81,6 @@ anattaGen
 			│   ├──  main_window_new.py
 			│   ├──  release_groups.set
 			│   ├──  repos.set
-			│   ├──  steam.json
 			│	└──  ui
 			│       ├──  config_manager.py
 			│       ├──  deployment_tab_ui.py
@@ -113,6 +112,9 @@ anattaGen
 			│       ├──  Setup.png
 			│       ├──  Tip.png
 			│       └──  Update.png
+
+
+```
 # Documentation
 
 [Detailed Docs can be found here](https://oldtools.github.io/anattaGen)
@@ -120,11 +122,10 @@ anattaGen
 # Setup
 
 
-```
 ## Ubuntu Users should :
-## For now clone the repo, setup a virtual environment in python and install the requirements via pip
+### For now clone the repo, setup a virtual environment in python and install the requirements via pip
 ## Copy this code and you should be GUD
-
+```
 		sudo apt install python3-venv python3-pip git
 		cd ~
 		git clone --recursive https://github.com/oldtools/anattaGen.git
@@ -138,22 +139,13 @@ anattaGen
 
 
 
-```
-
-
 ## Windows 11 / winget users can copy/paste this to install python very quickly:
-
+```
 		winget install -e --id Python.Python.3.12 --scope machine
 ```
 
-
-
+### Now you can clone or download the repo, and install the requirements via pip
 ```
-
-
-## Now you can clone or download the repo, and install the requirements via pip
-
-
 		cd %userprofile%/Downloads
 		git clone --recursive https://github.com/oldtools/anattaGen
 		cd anattaGen
@@ -162,11 +154,8 @@ anattaGen
 ```
 
 
-```
-
-
 ## Apple Mac Users
-
+```
 		Click the mouse and ask Tim if it's okay to use the letter-button iThingAmaBopper. Hint: (It's not okay)
 		Upgrade your monitor-stand.  Pleb.
 ```
@@ -177,7 +166,7 @@ anattaGen
 It is not necessary, but recommended to enable the RunAsAdmin option.
 Ideally, anattaGen can run entirely in userspace, however many games require administrator access where user-level hardware is unavailable or unreliable.
 
-![AsAdmin](https://github.io/anattaGen/img/runas.png)
+![AsAdmin](site/img/runas.png)
 ult profile-name eg: game-name/_#.gamecontroller.amgp, and other "player#" monikers.)
 
 # W.I.P/To Do
