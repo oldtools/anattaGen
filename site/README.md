@@ -177,7 +177,7 @@ anattaGen
 It is not necessary, but recommended to enable the RunAsAdmin option.
 Ideally, anattaGen can run entirely in userspace, however many games require administrator access where user-level hardware is unavailable or unreliable.
 
-![AsAdmin](https://github.io/anattaGen/img/runas.png)
+![AsAdmin](https://oldtools.github.io/anattaGen/img/runas.png)
 ult profile-name eg: game-name/_#.gamecontroller.amgp, and other "player#" monikers.)
 
 # W.I.P/To Do

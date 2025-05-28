@@ -1,4 +1,4 @@
-# anattaGen Game Environment Manager
+# [RJ_PROJ] Game Environment Manager
 
 A desktop application to create isolated environments for PC games. 
 
@@ -43,13 +43,13 @@ AntimicroX, keySticks, JoyXoff, Joy2Key keymappers are supported.
 
 
 ## Installation
-- This Version: **0.99.321344.2 (KRIKEY KRIMINAL)**
+- This Version: **[CURV]**
 
-- This Build: **0.99.321344.2**
+- This Build: **[VERSION]**
 
 Run the installer or extract the binary to a location of your choice, **or** download and build and run the source files and executables.
 ```sh
-anattaGen
+[RJ_PROJ]
 
 			├── README.md
 			├── README.set
@@ -115,7 +115,7 @@ anattaGen
 			│       └──  Update.png
 # Documentation
 
-[Detailed Docs can be found here](https://oldtools.github.io/anattaGen)
+[Detailed Docs can be found here](https://[GIT_USER].[GIT_WEB]/[RJ_PROJ])
 
 # Setup
 
@@ -127,8 +127,8 @@ anattaGen
 
 		sudo apt install python3-venv python3-pip git
 		cd ~
-		git clone --recursive https://github.com/oldtools/anattaGen.git
-		cd anattaGen
+		git clone --recursive https://[GIT_SRC]/[RJ_PROJ].git
+		cd [RJ_PROJ]
 		python3 -m venv .venv
 		source .venv/bin/activate
 		python -m pip install -r requirements.txt
@@ -155,8 +155,8 @@ anattaGen
 
 
 		cd %userprofile%/Downloads
-		git clone --recursive https://github.com/oldtools/anattaGen
-		cd anattaGen
+		git clone --recursive https://[GIT_SRC]/[RJ_PROJ]
+		cd [RJ_PROJ]
 		python -m pip install -r requirements.txt
 		python -m Python\main.py
 ```
@@ -175,9 +175,9 @@ anattaGen
 
 ## Launching Games
 It is not necessary, but recommended to enable the RunAsAdmin option.
-Ideally, anattaGen can run entirely in userspace, however many games require administrator access where user-level hardware is unavailable or unreliable.
+Ideally, [RJ_PROJ] can run entirely in userspace, however many games require administrator access where user-level hardware is unavailable or unreliable.
 
-![AsAdmin](https://github.io/anattaGen/img/runas.png)
+![AsAdmin](https://[GIT_WEB]/[RJ_PROJ]/img/runas.png)
 ult profile-name eg: game-name/_#.gamecontroller.amgp, and other "player#" monikers.)
 
 # W.I.P/To Do
