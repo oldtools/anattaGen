@@ -8,6 +8,7 @@ Python/steam_filtered.txt
 Python/steam_normalized_index.json
 Python/app.log
 GitDeploy.*
+index_backups
 .gitignore
 *.ini
 *.bak

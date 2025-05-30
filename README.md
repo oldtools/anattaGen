@@ -15,7 +15,7 @@ A desktop application to create isolated environments for PC games.
 
 ## Contributors
 
-*   **Vai-brainium "Quantum Quill"** - AI assistant that helped resolve critical UI and data processing issues.
+*   **Vai-brainium Quantum Quill** - AI assistant that helped resolve critical UI and data processing issues.
 
 # But, why???
 
@@ -25,7 +25,7 @@ A desktop application to create isolated environments for PC games.
 
 **2.** Steam has no gaemz
 
-**3.** DRM and other malware concerns require *"unofficial patches"*
+**3.** DRM and other malware concerns require *unofficial patches*
 
 ## Benfits:
 
@@ -61,6 +61,7 @@ anattaGen
 			│
 			├──  bin
 			│   ├──  aria2c.exe
+			│   ├──  Shortcut.exe
 			│   └──  7z.exe
 			│
 			├──  Python
@@ -69,37 +70,46 @@ anattaGen
 			│   ├──  ax_KBM_Template.set
 			│   ├──  ax_Trigger.set
 			│   ├──  cmdtemplate.set
-			│   ├──  config.ini
 			│   ├──  config.set
 			│   ├──  configparser.ConfigParser
 			│   ├──  demoted.set
 			│   ├──  exclude_exe.set
 			│   ├──  folder_exclude.set
+			│   ├──  Launcher.py
 			│   ├──  Joystick.ico
 			│   ├──  ks_Blank.set
 			│   ├──  ks_DeskTemplate.set
 			│   ├──  ks_GameTemplate.set
 			│   ├──  ks_Trigger.set
 			│   ├──  main.py
-			│   ├──  main_test.py
 			│   ├──  main_window_new.py
 			│   ├──  release_groups.set
 			│   ├──  repos.set
-			│	└──  ui
-			│       ├──  config_manager.py
-			│       ├──  deployment_tab_ui.py
-			│       ├──  editor_tab_ui.py
-			│       ├──  game_indexer.py
-			│       ├──  index_manager.py
-			│       ├──  name_processor.py
-			│       ├──  name_utils.py
-			│       ├──  setup_tab_ui.py
-			│       ├──  steam_cache.py
-			│       ├──  steam_integration.py
-			│       ├──  steam_processor.py
-			│       ├──  steam_utils.py
-			│       ├──  title_identifier.py
-			│       └──  ui_widgets.py
+			│   └──  ui
+			│        ├──  config_manager.py
+			│        ├──  deployment_tab_ui.py
+			│        ├──  editor_tab_ui.py
+			│        ├──  game_indexer.py
+			│        ├──  index_manager.py
+			│        ├──  name_processor.py
+			│        ├──  name_utils.py
+			│        ├──  setup_tab_ui.py
+			│        ├──  steam_cache.py
+			│        ├──  steam_integration.py
+			│        ├──  steam_processor.py
+			│        ├──  steam_utils.py
+			│        ├──  title_identifier.py
+			│        ├──  ui_widgets.py
+			│        └──  creation
+			│            ├──  shortcut_manager.py
+			│            ├──  __init__.py
+			│            ├──  config_writer.py
+			│            ├──  _controller.py
+			│            ├──  file_propagator.py
+			│            ├──  joystick_profile_manager.py
+			│            ├──  launcher_manager.py
+			│            └──    profile_manager.py
+			│
 			├──  site
 			│   ├──  AnkaCoder_b.otf
 			│   ├──  index.set
@@ -109,13 +119,13 @@ anattaGen
 			│   ├──  key.ico
 			│   ├──  TruenoLt.otf
 			│   ├──  version.txt
-			│	└──  img
-			│       ├──  Install.png
-			│       ├──  key.png
-			│       ├──  runas.png
-			│       ├──  Setup.png
-			│       ├──  Tip.png
-			│       └──  Update.png
+			│   └──  img
+			│        ├──  Install.png
+			│        ├──  key.png
+			│        ├──  runas.png
+			│        ├──  Setup.png
+			│        ├──  Tip.png
+			│        └──  Update.png
 
 
 ```
@@ -171,7 +181,7 @@ It is not necessary, but recommended to enable the RunAsAdmin option.
 Ideally, anattaGen can run entirely in userspace, however many games require administrator access where user-level hardware is unavailable or unreliable.
 
 ![AsAdmin](site/img/runas.png)
-ult profile-name eg: game-name/_#.gamecontroller.amgp, and other "player#" monikers.)
+ult profile-name eg: game-name/_#.gamecontroller.amgp, and other player# monikers.)
 
 # W.I.P/To Do
 
