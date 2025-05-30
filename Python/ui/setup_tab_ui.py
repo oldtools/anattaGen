@@ -146,3 +146,24 @@ def populate_setup_tab(main_window: QWidget):
     
     main_layout.addLayout(form_layout)
     main_layout.addStretch(1) 
+
+    # Set object names for QLineEdit objects
+    main_window.controller_mapper_app_line_edit.setObjectName("controller_mapper_app_line_edit")
+    main_window.borderless_app_line_edit.setObjectName("borderless_app_line_edit")
+    main_window.multimonitor_app_line_edit.setObjectName("multimonitor_app_line_edit")
+    main_window.after_launch_app_line_edit.setObjectName("after_launch_app_line_edit")
+    main_window.before_exit_app_line_edit.setObjectName("before_exit_app_line_edit")
+    
+    for i, le in enumerate(main_window.pre_launch_app_line_edits):
+        le.setObjectName(f"pre_launch_app_line_edit_{i}")
+    
+    for i, le in enumerate(main_window.post_launch_app_line_edits):
+        le.setObjectName(f"post_launch_app_line_edit_{i}")
+    
+    main_window.profiles_dir_edit.setObjectName("profiles_dir_edit")
+    main_window.launchers_dir_edit.setObjectName("launchers_dir_edit")
+    main_window.p1_profile_edit.setObjectName("p1_profile_edit")
+    main_window.p2_profile_edit.setObjectName("p2_profile_edit")
+    main_window.mediacenter_profile_edit.setObjectName("mediacenter_profile_edit")
+    main_window.multimonitor_gaming_config_edit.setObjectName("multimonitor_gaming_config_edit")
+    main_window.multimonitor_media_config_edit.setObjectName("multimonitor_media_config_edit")

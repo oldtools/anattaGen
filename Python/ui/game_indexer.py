@@ -314,6 +314,15 @@ def get_editor_table_data(editor_table):
         else:
             borderless_value = "No"
         
+        # Get UOC/LC indicators for path fields
+        path_indicators = {}
+        for col in range(8, 21):
+            item = editor_table.item(row, col)
+            if item:
+                indicator = item.text()
+                # Store the indicator (< for UOC, > for LC)
+                path_indicators[f"col_{col}_indicator"] = indicator
+        
         row_data = {
             "include": get_checkbox_value(row, 0),
             "executable": editor_table.item(row, 1).text() if editor_table.item(row, 1) else "",
@@ -338,7 +347,8 @@ def get_editor_table_data(editor_table):
             "just_before": editor_table.item(row, 20).text() if editor_table.item(row, 20) else "",
             "borderless": borderless_value,
             "as_admin": get_checkbox_value(row, 22),
-            "no_tb": get_checkbox_value(row, 23)
+            "no_tb": get_checkbox_value(row, 23),
+            "path_indicators": path_indicators  # Store all path indicators
         }
         data.append(row_data)
     return data
@@ -420,8 +430,40 @@ def add_executable_to_editor_table(main_window, include_checked=True, exec_name=
     
     # Get deployment tab settings to populate path fields with UOC/LC indicators
     # Columns 8-20 are path fields that should use < for UOC and > for LC
-    for col in range(8, 21):
-        main_window.editor_table.setItem(row, col, QTableWidgetItem("<"))  # Default to UOC
+    path_columns = {
+        8: "p1_profile_edit",
+        9: "p2_profile_edit",
+        10: "controller_mapper_app_line_edit",
+        11: "multimonitor_gaming_config_edit",
+        12: "multimonitor_media_config_edit",
+        13: "post_launch_app_line_edit_0",
+        14: "post_launch_app_line_edit_1",
+        15: "post_launch_app_line_edit_2",
+        16: "pre_launch_app_line_edit_0",
+        17: "pre_launch_app_line_edit_1",
+        18: "pre_launch_app_line_edit_2",
+        19: "after_launch_app_line_edit",
+        20: "before_exit_app_line_edit"
+    }
+    
+    # Check if deployment_path_options exists
+    if hasattr(main_window, 'deployment_path_options'):
+        for col, path_key in path_columns.items():
+            # Default to UOC
+            indicator = "<"
+            
+            # Check if we have a radio group for this path
+            if path_key in main_window.deployment_path_options:
+                radio_group = main_window.deployment_path_options[path_key]
+                checked_button = radio_group.checkedButton()
+                if checked_button and checked_button.text() == "LC":
+                    indicator = ">"
+            
+            main_window.editor_table.setItem(row, col, QTableWidgetItem(indicator))
+    else:
+        # If no deployment_path_options, default all to UOC
+        for col in range(8, 21):
+            main_window.editor_table.setItem(row, col, QTableWidgetItem("<"))
     
     # Set borderless status (E for enabled, K for terminates on exit, blank for not enabled)
     borderless_value = ""

@@ -8,27 +8,15 @@ PIPE_CHAR = "|"
 SAFE_PIPE_CHAR = ""  # U+2502
 
 
-def save_index(main_window_or_data, directory=None):
-    """
-    Save the table data to current.index, replacing all | with │.
+def save_index(main_window, directory, data):
+    """Save index data to a file"""
+    # Create the directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
     
-    Args:
-        main_window_or_data: Either MainWindow object or list of dicts/rows with game data
-        directory: Directory to save the index file in (default: app root)
-    """
-    # If we got the main_window, get the data from it
-    data = main_window_or_data
-    main_window = None
+    # Create a backup of the current index if it exists
+    backup_index(directory)
     
-    if hasattr(main_window_or_data, '_get_editor_table_data'):
-        main_window = main_window_or_data
-        data = main_window_or_data._get_editor_table_data()
-    
-    # Get the app's root directory if directory is not specified
-    if directory is None:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        directory = os.path.dirname(os.path.dirname(script_dir))
-    
+    # Save the index
     path = os.path.join(directory, INDEX_FILENAME)
     with open(path, "w", encoding="utf-8") as f:
         for row in data:
@@ -37,8 +25,32 @@ def save_index(main_window_or_data, directory=None):
                 # Define the expected order of fields
                 fields = ["include", "executable", "directory", "steam_title", 
                           "name_override", "options", "arguments", "steam_id",
+                          "p1_profile", "p2_profile", "desktop_ctrl", 
+                          "game_monitor_cfg", "desktop_monitor_cfg", 
+                          "post1", "post2", "post3", 
+                          "pre1", "pre2", "pre3", 
+                          "just_after", "just_before", "borderless",
                           "as_admin", "no_tb"]
-                row_values = [row.get(field, "") for field in fields]
+                
+                # Get path indicators
+                path_indicators = row.get("path_indicators", {})
+                
+                # Create a list of values
+                row_values = []
+                for i, field in enumerate(fields):
+                    if 8 <= i <= 20:  # Path fields (columns 8-20)
+                        # Use the indicator from path_indicators if available
+                        col = i
+                        indicator = path_indicators.get(f"col_{col}_indicator", "<")  # Default to UOC
+                        # If no indicator, use the value from the field
+                        if f"col_{col}_indicator" not in path_indicators and field in row:
+                            indicator = row[field]
+                        # If still no indicator, default to UOC
+                        if not indicator:
+                            indicator = "<"
+                        row_values.append(indicator)
+                    else:
+                        row_values.append(row.get(field, ""))
             else:
                 # Assume it's already a list
                 row_values = row

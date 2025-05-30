@@ -34,6 +34,21 @@ def create_editor_tab_item_status_widget(parent, initial_text="", row=-1, col=-1
 
 def populate_editor_tab(main_window):
     """Populate the editor tab with all required UI elements"""
+    # Create the editor tab if it doesn't exist
+    if not hasattr(main_window, 'editor_tab') or main_window.editor_tab is None:
+        main_window.editor_tab = QWidget()
+        
+        # Add the editor tab to the tab widget if it doesn't exist
+        tab_exists = False
+        for i in range(main_window.tabs.count()):
+            if main_window.tabs.tabText(i) == "Editor":
+                tab_exists = True
+                main_window.tabs.setCurrentIndex(i)
+                break
+        
+        if not tab_exists:
+            main_window.tabs.addTab(main_window.editor_tab, "Editor")
+    
     # Create main layout for the editor tab
     main_window.editor_tab_layout = QVBoxLayout(main_window.editor_tab)
     
@@ -68,15 +83,10 @@ def populate_editor_tab(main_window):
     regenerate_names_button.setToolTip("Regenerate all name overrides in the table")
     button_layout.addWidget(regenerate_names_button)
     
-    # Add spacer to push CREATE button to the right
+    # Add spacer to push buttons to the left
     button_layout.addStretch(1)
     
-    # Add CREATE button aligned to the right
-    create_button = QPushButton("CREATE")
-    create_button.setStyleSheet("font-weight: bold;")
-    create_button.setToolTip("Generate and create profiles with configurations reflected by values in the list-view")
-    # TODO: Connect this button to the profile creation functionality
-    button_layout.addWidget(create_button)
+    # Note: CREATE button removed as it does nothing
     
     main_window.editor_tab_layout.addLayout(button_layout)
     
@@ -105,4 +115,7 @@ def populate_editor_tab(main_window):
     main_window.editor_table.customContextMenuRequested.connect(main_window._on_editor_table_custom_context_menu)
     main_window.editor_table.horizontalHeader().sectionClicked.connect(main_window._on_editor_table_header_click)
     
-    main_window.editor_tab_layout.addWidget(main_window.editor_table) 
+    main_window.editor_tab_layout.addWidget(main_window.editor_table)
+    
+    # Print debug info
+    print("Editor tab populated successfully")

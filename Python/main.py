@@ -25,10 +25,28 @@ logging.info(f"Log file: {os.path.abspath(log_file)}")
 
 from PyQt6.QtWidgets import QApplication
 from Python.main_window_new import MainWindow
+from Python.ui.creation.creation_controller import CreationController
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
-    app.setStyle("fusion")    
+    app.setStyle("Material")    
     window.show()
     sys.exit(app.exec()) 
+
+# Add this import at the top of the file
+from Python.ui.creation.creation_controller import CreationController
+
+# Inside the MainWindow class initialization or setup method
+def setup_controllers(self):
+    """Initialize all controllers"""
+    # Initialize the creation controller
+    self.creation_controller = CreationController(self)
+    
+    # Connect the Create button to the creation process
+    if hasattr(self, 'create_button'):
+        self.create_button.clicked.connect(self.start_creation_process)
+
+def start_creation_process(self):
+    """Start the creation process for selected games"""
+    self.creation_controller.create_all()
