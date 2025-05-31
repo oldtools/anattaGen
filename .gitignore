@@ -1,12 +1,17 @@
 Python/configparser.ConfigParser
 Python/__pycache__/
 Python/ui/__pycache__/
+Python/ui/creation/__pycache__/
+Python/ui/widgets/__pycache__/
 .vscode/
 Python/main_test.py
 Python/steam.json
 Python/steam_filtered.txt
 Python/steam_normalized_index.json
 Python/app.log
+Python/aria2c.exe
+Python/Launcher.exe
+Python/Shortcut.exe
 GitDeploy.*
 index_backups
 .gitignore

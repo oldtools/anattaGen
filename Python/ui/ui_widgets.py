@@ -113,6 +113,7 @@ def create_list_management_widget(parent_window, is_directory_list=True):
     return widget, combo_box
 
 def create_deployment_path_row_widget(parent_window, setup_qlineedit_to_mirror: QLineEdit):
+    """Create a row widget with CEN/LC radio buttons and a path label"""
     row_widget = QWidget()
     row_layout = QHBoxLayout(row_widget)
     row_layout.setContentsMargins(0, 0, 0, 0)
@@ -121,7 +122,7 @@ def create_deployment_path_row_widget(parent_window, setup_qlineedit_to_mirror: 
     radio_group = QButtonGroup(row_widget)
     
     # Replace checkboxes with radio buttons
-    uoc_radio = QRadioButton("UOC")
+    uoc_radio = QRadioButton("CEN")
     uoc_radio.setToolTip("Use Original Config: If selected, the application will use the path defined in the Setup tab.")
     uoc_radio.setChecked(True)
     

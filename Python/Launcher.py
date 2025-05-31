@@ -192,6 +192,39 @@ class GameLauncher:
             self.just_before_exit_app = config.get('PostLaunch', 'JustBeforeExitApp', fallback='')
             self.just_after_launch_wait = config.get('PostLaunch', 'JustAfterLaunchWait', fallback='0') == '1'
             self.just_before_exit_wait = config.get('PostLaunch', 'JustBeforeExitWait', fallback='0') == '1'
+        
+        # Load sequences
+        if 'Sequences' in config:
+            # Get launch sequence
+            launch_sequence_str = config.get('Sequences', 'LaunchSequence', fallback='')
+            if launch_sequence_str:
+                self.launch_sequence = launch_sequence_str.split(',')
+            else:
+                # Default launch sequence
+                self.launch_sequence = [
+                    "Controller-Mapper", 
+                    "Monitor-Config", 
+                    "No-TB", 
+                    "Pre1", 
+                    "Pre2", 
+                    "Pre3", 
+                    "Borderless"
+                ]
+            
+            # Get exit sequence
+            exit_sequence_str = config.get('Sequences', 'ExitSequence', fallback='')
+            if exit_sequence_str:
+                self.exit_sequence = exit_sequence_str.split(',')
+            else:
+                # Default exit sequence
+                self.exit_sequence = [
+                    "Post1", 
+                    "Post2", 
+                    "Post3", 
+                    "Monitor-Config", 
+                    "Taskbar",
+                    "Controller-Mapper"
+                ]
     
     def detect_joysticks(self):
         """Detect connected joysticks"""

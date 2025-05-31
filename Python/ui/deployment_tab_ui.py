@@ -1,112 +1,69 @@
 # Python/ui/deployment_tab_ui.py
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, 
-    QGroupBox, QFormLayout, QListWidget, QAbstractItemView,
-    QPushButton, QFrame, QSplitter, QLineEdit
+    QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QLineEdit, 
+    QPushButton, QCheckBox, QGroupBox, QWidget, QSplitter,
+    QButtonGroup, QRadioButton, QMessageBox, QTabWidget, QMenu
 )
-from PyQt6.QtCore import Qt, QMimeData
-from PyQt6.QtGui import QDrag, QPixmap, QPainter, QColor
-
-class DragDropListWidget(QListWidget):
-    """Custom QListWidget that supports drag and drop reordering"""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.setStyleSheet("""
-            QListWidget {
-                border: 1px solid #aaa;
-                border-radius: 4px;
-                background-color: #f8f8f8;
-            }
-            QListWidget::item {
-                border-bottom: 1px solid #eee;
-                padding: 4px;
-            }
-            QListWidget::item:selected {
-                background-color: #e0e0e0;
-                color: black;
-            }
-            QListWidget::item:hover {
-                background-color: #f0f0f0;
-            }
-        """)
-    
-    def startDrag(self, supportedActions):
-        """Custom drag start to show a better drag visual"""
-        item = self.currentItem()
-        if not item:
-            return
-            
-        # Create mime data
-        mimeData = QMimeData()
-        mimeData.setText(item.text())
-        
-        # Create drag object
-        drag = QDrag(self)
-        drag.setMimeData(mimeData)
-        
-        # Create a pixmap for the drag visual
-        pixmap = QPixmap(self.viewport().size())
-        pixmap.fill(Qt.GlobalColor.transparent)
-        
-        # Paint the item onto the pixmap
-        painter = QPainter(pixmap)
-        painter.setOpacity(0.7)
-        painter.fillRect(self.visualItemRect(item), QColor(200, 200, 255))
-        painter.setPen(QColor(0, 0, 0))
-        painter.drawText(self.visualItemRect(item), Qt.AlignmentFlag.AlignCenter, item.text())
-        painter.end()
-        
-        # Set the drag pixmap
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(self.viewport().mapFromGlobal(self.cursor().pos()))
-        
-        # Execute the drag
-        drag.exec(supportedActions)
+from PyQt6.QtCore import Qt
+from .ui_widgets import create_deployment_path_row_widget
+from .widgets import DragDropListWidget
 
 def populate_deployment_tab(main_window):
     """Populate the deployment tab with UI elements"""
-    # Clear the existing layout if it has any widgets
-    if hasattr(main_window, 'deployment_tab_layout'):
-        # Remove all widgets from the layout
-        while main_window.deployment_tab_layout.count():
-            item = main_window.deployment_tab_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-    else:
-        # Create the layout if it doesn't exist
-        main_window.deployment_tab_layout = QVBoxLayout(main_window.deployment_tab)
+    from PyQt6.QtWidgets import (
+        QLabel, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit, 
+        QPushButton, QFileDialog, QWidget, QGroupBox, QCheckBox,
+        QSplitter, QButtonGroup, QRadioButton, QMenu, QTableWidget
+    )
+    from PyQt6.QtCore import Qt
+    from .ui_widgets import create_deployment_path_row_widget
+    from .widgets import DragDropListWidget
+    from .accordion import AccordionSection
+    
+    # Create the deployment tab layout
+    main_window.deployment_tab_layout = QVBoxLayout(main_window.deployment_tab)
     
     # Create a main layout for the deployment tab content
     main_layout = QVBoxLayout()
     main_layout.setContentsMargins(10, 10, 10, 10)
     
-    # --- Top section for general options ---
-    general_options_group_box = QGroupBox("General Options")
-    general_options_layout = QVBoxLayout(general_options_group_box)
+    # --- Section 1: General Options ---
+    general_options_widget = QWidget()
+    general_options_layout = QVBoxLayout(general_options_widget)
     
     # Create checkboxes for general options
     main_window.net_check_checkbox = QCheckBox("Check Network Connection")
     main_window.net_check_checkbox.setToolTip("If checked, the launcher will check for an active network connection before launching the game.")
     
+    # Create Steam DB button with dropdown menu
+    steam_db_button = QPushButton("STEAM DB")
+    steam_db_button.setToolTip("Steam database operations")
+    steam_db_button.setStyleSheet("QPushButton { min-width: 144px; }")
+    
+    # Create a menu for the Steam DB button
+    steam_db_menu = QMenu()
+    update_steam_action = steam_db_menu.addAction("Update steam.json")
+    update_steam_action.triggered.connect(main_window._update_steam_json_cache)
+    delete_json_action = steam_db_menu.addAction("Delete steam.json")
+    delete_json_action.triggered.connect(main_window._delete_steam_json)
+    
+    # Set the menu for the button
+    steam_db_button.setMenu(steam_db_menu)
+    
+    # Create a layout for the net check and Steam DB button
+    net_check_layout = QHBoxLayout()
+    net_check_layout.addWidget(main_window.net_check_checkbox)
+    net_check_layout.addWidget(steam_db_button)
+    net_check_layout.addStretch(1)
+    
     main_window.name_check_checkbox = QCheckBox("Check Game Name")
-    main_window.name_check_checkbox.setToolTip("If checked, the launcher will verify the game name before launching.")
-    
-    main_window.use_kill_list_checkbox = QCheckBox("Use Kill List")
-    main_window.use_kill_list_checkbox.setToolTip("If checked, the launcher will kill processes in the kill list before launching the game.")
-    
-    main_window.run_as_admin_checkbox = QCheckBox("Run as Administrator")
-    main_window.run_as_admin_checkbox.setToolTip("If checked, the launcher will run the game as administrator.")
+    main_window.name_check_checkbox.setToolTip("If checked, the launcher will verify the game name before launching. Also enables name-matching during indexing.")
     
     main_window.hide_taskbar_checkbox = QCheckBox("Hide Taskbar")
-    main_window.hide_taskbar_checkbox.setToolTip("If checked, the taskbar will be hidden when the game is running.")
+    main_window.hide_taskbar_checkbox.setToolTip("If checked, the launcher will hide the taskbar when the game launches.")
     
     main_window.enable_launcher_checkbox = QCheckBox("Enable Launcher")
-    main_window.enable_launcher_checkbox.setToolTip("If checked, the launcher will be enabled for this game.")
+    main_window.enable_launcher_checkbox.setToolTip("If checked, the launcher will be enabled.")
     
     main_window.apply_mapper_profiles_checkbox = QCheckBox("Apply Mapper Profiles")
     main_window.apply_mapper_profiles_checkbox.setToolTip("If checked, the launcher will apply controller mapper profiles.")
@@ -121,32 +78,33 @@ def populate_deployment_tab(main_window):
     general_options_columns_layout = QHBoxLayout()
     
     column1_layout = QVBoxLayout()
-    column1_layout.addWidget(main_window.run_as_admin_checkbox)
-    column1_layout.addWidget(main_window.hide_taskbar_checkbox)
-    column1_layout.addWidget(main_window.enable_launcher_checkbox)
-    column1_layout.addWidget(main_window.apply_mapper_profiles_checkbox)
-    column1_layout.addWidget(main_window.enable_borderless_windowing_checkbox)
-    column1_layout.addWidget(main_window.terminate_bw_on_exit_checkbox)
+    column1_layout.addLayout(net_check_layout)  # Add the net check layout with Steam DB button
+    column1_layout.addWidget(main_window.name_check_checkbox)
     column1_layout.addStretch(1)
     
     column2_layout = QVBoxLayout()
-    column2_layout.addWidget(main_window.net_check_checkbox)
-    column2_layout.addWidget(main_window.name_check_checkbox)
-    column2_layout.addWidget(main_window.use_kill_list_checkbox)
+    column2_layout.addWidget(main_window.hide_taskbar_checkbox)
+    column2_layout.addWidget(main_window.enable_launcher_checkbox)
+    column2_layout.addWidget(main_window.apply_mapper_profiles_checkbox)
     column2_layout.addStretch(1)
-
+    
+    column3_layout = QVBoxLayout()
+    column3_layout.addWidget(main_window.enable_borderless_windowing_checkbox)
+    column3_layout.addWidget(main_window.terminate_bw_on_exit_checkbox)
+    column3_layout.addStretch(1)
+    
     general_options_columns_layout.addLayout(column1_layout)
     general_options_columns_layout.addLayout(column2_layout)
+    general_options_columns_layout.addLayout(column3_layout)
     
     general_options_layout.addLayout(general_options_columns_layout)
-    main_layout.addWidget(general_options_group_box)
-
-    # --- Middle section for path configurations ---
-    middle_section_form_layout = QFormLayout()
-    middle_section_form_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+    
+    # --- Section 2: Path Configurations ---
+    path_config_widget = QWidget()
+    path_config_layout = QFormLayout(path_config_widget)
     
     path_details_label = QLabel("<b>Application & Profile Paths (from Setup Tab):</b>")
-    middle_section_form_layout.addRow(path_details_label)
+    path_config_layout.addRow(path_details_label)
     
     # These attributes are expected to be set on main_window by populate_setup_tab
     paths_to_display = [
@@ -155,49 +113,59 @@ def populate_deployment_tab(main_window):
         ("Media Center/Desktop Profile File:", main_window.mediacenter_profile_edit if hasattr(main_window, 'mediacenter_profile_edit') else None),
         ("MM Gaming Config File:", main_window.multimonitor_gaming_config_edit if hasattr(main_window, 'multimonitor_gaming_config_edit') else None),
         ("MM Media/Desktop Config File:", main_window.multimonitor_media_config_edit if hasattr(main_window, 'multimonitor_media_config_edit') else None),
-        ("Controller Mapper App:", main_window.controller_mapper_app_line_edit if hasattr(main_window, 'controller_mapper_app_line_edit') else None),
-        ("Borderless Windowing App:", main_window.borderless_app_line_edit if hasattr(main_window, 'borderless_app_line_edit') else None),
-        ("Multi-Monitor App:", main_window.multimonitor_app_line_edit if hasattr(main_window, 'multimonitor_app_line_edit') else None),
-        ("Just After Launch App:", main_window.after_launch_app_line_edit if hasattr(main_window, 'after_launch_app_line_edit') else None),
-        ("Just Before Exit App:", main_window.before_exit_app_line_edit if hasattr(main_window, 'before_exit_app_line_edit') else None),
     ]
     
-    # Add pre-launch apps
-    if hasattr(main_window, 'pre_launch_app_line_edits'):
-        for i, le in enumerate(main_window.pre_launch_app_line_edits):
-            paths_to_display.append((f"Pre-Launch App {i+1}:", le))
-    
-    # Add post-launch apps
-    if hasattr(main_window, 'post_launch_app_line_edits'):
-        for i, le in enumerate(main_window.post_launch_app_line_edits):
-            paths_to_display.append((f"Post-Launch App {i+1}:", le))
-            
-    # Create a dictionary to store the deployment path options
-    main_window.deployment_path_options = {}
+    # Initialize the deployment path options dictionary if it doesn't exist
+    if not hasattr(main_window, 'deployment_path_options'):
+        main_window.deployment_path_options = {}
     
     for label_text, setup_qlineedit in paths_to_display:
         if setup_qlineedit:
-            # Use the imported function create_deployment_path_row_widget
-            # It expects parent_window (main_window) and the QLineEdit to mirror
-            from .ui_widgets import create_deployment_path_row_widget
-            path_row_container_widget, uoc_radio, path_label, lc_radio = create_deployment_path_row_widget(main_window, setup_qlineedit)
-            middle_section_form_layout.addRow(label_text, path_row_container_widget)
-            
-            # Store the radio button group for this path
-            key = setup_qlineedit.objectName()
-            if key:
-                from PyQt6.QtWidgets import QButtonGroup
-                radio_group = QButtonGroup(main_window)
+            try:
+                # Create a container widget for the row
+                path_row_container_widget = QWidget()
+                path_row_layout = QHBoxLayout(path_row_container_widget)
+                path_row_layout.setContentsMargins(0, 0, 0, 0)
+                
+                # Create radio buttons
+                uoc_radio = QRadioButton("CEN")
+                uoc_radio.setToolTip("Use Original Config: If selected, the application will use the path defined in the Setup tab.")
+                uoc_radio.setChecked(True)
+                
+                lc_radio = QRadioButton("LC")
+                lc_radio.setToolTip("Launch Conditionally: If selected, this associated application/script will only be launched if certain conditions are met (details TBD).")
+                
+                # Create a button group
+                radio_group = QButtonGroup(path_row_container_widget)
                 radio_group.addButton(uoc_radio)
                 radio_group.addButton(lc_radio)
-                main_window.deployment_path_options[key] = radio_group
-        else:
-             middle_section_form_layout.addRow(label_text, QLabel("<i>Path not configured in Setup Tab</i>"))
+                
+                # Create a path display label
+                path_display = QLineEdit()
+                path_display.setText(setup_qlineedit.text())
+                path_display.setReadOnly(True)
+                
+                # Connect the setup line edit to update the path display
+                setup_qlineedit.textChanged.connect(lambda text, display=path_display: display.setText(text))
+                
+                # Add widgets to the layout
+                path_row_layout.addWidget(uoc_radio)
+                path_row_layout.addWidget(path_display, 1)
+                path_row_layout.addWidget(lc_radio)
+                
+                # Store the radio group in the deployment_path_options dictionary
+                path_key = setup_qlineedit.objectName()
+                if path_key:
+                    main_window.deployment_path_options[path_key] = radio_group
+                
+                # Add the row to the form layout
+                path_config_layout.addRow(label_text, path_row_container_widget)
+            except Exception as e:
+                print(f"Error creating path row for {label_text}: {e}")
     
-    main_layout.addLayout(middle_section_form_layout)
-    
-    # --- Add the launch sequence and exit sequence lists ---
-    sequence_layout = QHBoxLayout()
+    # --- Section 3: Sequences and Creation Options ---
+    sequences_widget = QWidget()
+    sequences_layout = QVBoxLayout(sequences_widget)
     
     # Create a splitter to allow resizing
     splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -206,8 +174,9 @@ def populate_deployment_tab(main_window):
     launch_sequence_group = QGroupBox("Launch Sequence")
     launch_sequence_layout = QVBoxLayout(launch_sequence_group)
     
-    # Create the launch sequence list
+    # Create the launch sequence list with improved styling
     main_window.launch_sequence_list = DragDropListWidget()
+    main_window.launch_sequence_list.setToolTip("Drag items to reorder the launch sequence. This determines the order in which components are started before the game launches.")
     main_window.launch_sequence_list.addItems([
         "Controller-Mapper", 
         "Monitor-Config", 
@@ -221,6 +190,7 @@ def populate_deployment_tab(main_window):
     # Add buttons to manage the launch sequence
     launch_buttons_layout = QHBoxLayout()
     reset_launch_btn = QPushButton("Reset")
+    reset_launch_btn.setToolTip("Reset the launch sequence to default order")
     reset_launch_btn.clicked.connect(lambda: reset_launch_sequence(main_window))
     launch_buttons_layout.addWidget(reset_launch_btn)
     launch_buttons_layout.addStretch(1)
@@ -233,20 +203,22 @@ def populate_deployment_tab(main_window):
     exit_sequence_group = QGroupBox("Exit Sequence")
     exit_sequence_layout = QVBoxLayout(exit_sequence_group)
     
-    # Create the exit sequence list
+    # Create the exit sequence list with improved styling
     main_window.exit_sequence_list = DragDropListWidget()
+    main_window.exit_sequence_list.setToolTip("Drag items to reorder the exit sequence. This determines the order in which components are stopped after the game exits.")
     main_window.exit_sequence_list.addItems([
         "Post1", 
         "Post2", 
         "Post3", 
         "Monitor-Config", 
         "Taskbar",
-        "Controller-Mapper"  # Added Controller-Mapper to exit sequence
+        "Controller-Mapper"
     ])
     
     # Add buttons to manage the exit sequence
     exit_buttons_layout = QHBoxLayout()
     reset_exit_btn = QPushButton("Reset")
+    reset_exit_btn.setToolTip("Reset the exit sequence to default order")
     reset_exit_btn.clicked.connect(lambda: reset_exit_sequence(main_window))
     exit_buttons_layout.addWidget(reset_exit_btn)
     exit_buttons_layout.addStretch(1)
@@ -255,23 +227,7 @@ def populate_deployment_tab(main_window):
     exit_sequence_layout.addWidget(main_window.exit_sequence_list)
     exit_sequence_layout.addLayout(exit_buttons_layout)
     
-    # Add the groups to the splitter
-    splitter.addWidget(launch_sequence_group)
-    splitter.addWidget(exit_sequence_group)
-    
-    # Add the splitter to the sequence layout
-    sequence_layout.addWidget(splitter)
-    
-    # Add the sequence layout to the main layout
-    main_layout.addLayout(sequence_layout)
-    
-    # Add a horizontal line separator
-    line = QFrame()
-    line.setFrameShape(QFrame.Shape.HLine)
-    line.setFrameShadow(QFrame.Shadow.Sunken)
-    main_layout.addWidget(line)
-    
-    # --- Bottom section for creation options ---
+    # --- Creation Options (moved next to exit sequence) ---
     creation_options_group_box = QGroupBox("Creation Options")
     creation_options_layout = QVBoxLayout(creation_options_group_box)
     
@@ -291,9 +247,51 @@ def populate_deployment_tab(main_window):
     creation_options_layout.addWidget(main_window.create_overwrite_launcher_checkbox)
     creation_options_layout.addWidget(main_window.create_profile_folders_checkbox)
     creation_options_layout.addWidget(main_window.create_overwrite_joystick_profiles_checkbox)
+
+    # Add Index Sources button
+    index_sources_button = QPushButton("Index Sources")
+    index_sources_button.clicked.connect(main_window._index_sources)
+    index_sources_button.setStyleSheet("QPushButton { background-color: #2196F3; color: white; padding: 8px; }")
+    creation_options_layout.addWidget(index_sources_button)
     
-    # Add the creation options group box to the main layout
-    main_layout.addWidget(creation_options_group_box)
+    # Add Create button
+    create_button = QPushButton("Create Selected")
+    create_button.clicked.connect(main_window._on_create_button_clicked)
+    create_button.setStyleSheet("QPushButton { font-weight: bold; background-color: #4CAF50; color: white; padding: 8px; }")
+    creation_options_layout.addWidget(create_button)
+    
+    # Add the groups to the splitter
+    splitter.addWidget(launch_sequence_group)
+    splitter.addWidget(exit_sequence_group)
+    splitter.addWidget(creation_options_group_box)
+    
+    # Add the splitter to the sequence layout
+    sequences_layout.addWidget(splitter)
+    
+    # Create accordion sections
+    general_options_section = AccordionSection("General Options", general_options_widget)
+    path_config_section = AccordionSection("Path Configurations", path_config_widget)
+    sequences_section = AccordionSection("Sequences and Creation", sequences_widget)
+    
+    # Add sections to main layout
+    main_layout.addWidget(general_options_section)
+    main_layout.addWidget(path_config_section)
+    main_layout.addWidget(sequences_section)
+    main_layout.addStretch(1)
+    
+    # Set object names for config saving/loading
+    main_window.net_check_checkbox.setObjectName("net_check_checkbox")
+    main_window.name_check_checkbox.setObjectName("name_check_checkbox")
+    main_window.hide_taskbar_checkbox.setObjectName("hide_taskbar_checkbox")
+    main_window.enable_launcher_checkbox.setObjectName("enable_launcher_checkbox")
+    main_window.apply_mapper_profiles_checkbox.setObjectName("apply_mapper_profiles_checkbox")
+    main_window.enable_borderless_windowing_checkbox.setObjectName("enable_borderless_windowing_checkbox")
+    main_window.terminate_bw_on_exit_checkbox.setObjectName("terminate_bw_on_exit_checkbox")
+    main_window.create_overwrite_launcher_checkbox.setObjectName("create_overwrite_launcher_checkbox")
+    main_window.create_profile_folders_checkbox.setObjectName("create_profile_folders_checkbox")
+    main_window.create_overwrite_joystick_profiles_checkbox.setObjectName("create_overwrite_joystick_profiles_checkbox")
+    main_window.launch_sequence_list.setObjectName("launch_sequence_list")
+    main_window.exit_sequence_list.setObjectName("exit_sequence_list")
     
     # Add the main layout to the deployment tab layout
     main_window.deployment_tab_layout.addLayout(main_layout)
@@ -302,7 +300,7 @@ def populate_deployment_tab(main_window):
     print("Deployment tab populated successfully")
 
 def reset_launch_sequence(main_window):
-    """Reset the launch sequence to default"""
+    """Reset the launch sequence to default order"""
     main_window.launch_sequence_list.clear()
     main_window.launch_sequence_list.addItems([
         "Controller-Mapper", 
@@ -313,9 +311,12 @@ def reset_launch_sequence(main_window):
         "Pre3", 
         "Borderless"
     ])
+    # Save the configuration after resetting
+    from Python.ui.config_manager import save_configuration
+    save_configuration(main_window)
 
 def reset_exit_sequence(main_window):
-    """Reset the exit sequence to default"""
+    """Reset the exit sequence to default order"""
     main_window.exit_sequence_list.clear()
     main_window.exit_sequence_list.addItems([
         "Post1", 
@@ -323,8 +324,11 @@ def reset_exit_sequence(main_window):
         "Post3", 
         "Monitor-Config", 
         "Taskbar",
-        "Controller-Mapper"  # Added Controller-Mapper to exit sequence
+        "Controller-Mapper"
     ])
+    # Save the configuration after resetting
+    from Python.ui.config_manager import save_configuration
+    save_configuration(main_window)
 
 def print_deployment_options(main_window):
     """Print the deployment_path_options for debugging"""
@@ -341,7 +345,7 @@ def print_deployment_options(main_window):
         print("No deployment_path_options found on main_window")
 
 def create_deployment_path_row_widget(parent_window, setup_qlineedit_to_mirror: QLineEdit):
-    """Create a row widget with UOC/LC radio buttons and a path label"""
+    """Create a row widget with CEN/LC radio buttons and a path label"""
     row_widget = QWidget()
     row_layout = QHBoxLayout(row_widget)
     row_layout.setContentsMargins(0, 0, 0, 0)
@@ -350,7 +354,7 @@ def create_deployment_path_row_widget(parent_window, setup_qlineedit_to_mirror: 
     radio_group = QButtonGroup(row_widget)
     
     # Replace checkboxes with radio buttons
-    uoc_radio = QRadioButton("UOC")
+    uoc_radio = QRadioButton("CEN")
     uoc_radio.setToolTip("Use Original Config: If selected, the application will use the path defined in the Setup tab.")
     uoc_radio.setChecked(True)
     

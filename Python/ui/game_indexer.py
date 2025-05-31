@@ -11,27 +11,31 @@ from Python.ui.name_processor import NameProcessor
 from Python.ui.name_utils import normalize_name_for_matching, make_safe_filename
 from Python.ui.steam_utils import locate_and_exclude_manager_config
 
-def index_sources(main_window):
+def index_games(main_window, enable_name_matching=False):
     """
-    Index sources for games with UI updates
+    Index games from the source directories
     
     Args:
         main_window: The main application window
+        enable_name_matching: Whether to enable name matching with Steam
+    
+    Returns:
+        Number of executables found
     """
-    # Set indexing_cancelled flag to False
+    # Reset the indexing cancelled flag
     main_window.indexing_cancelled = False
     
-    # Create progress dialog
-    main_window.indexing_progress = QProgressDialog("Preparing to index sources...", "Cancel", 0, 100, main_window)
-    main_window.indexing_progress.setWindowTitle("Indexing Sources")
+    # Create a progress dialog
+    main_window.indexing_progress = QProgressDialog("Indexing games...", "Cancel", 0, 100, main_window)
+    main_window.indexing_progress.setWindowTitle("Indexing Games")
     main_window.indexing_progress.setWindowModality(Qt.WindowModality.WindowModal)
     main_window.indexing_progress.setMinimumDuration(0)
-    main_window.indexing_progress.canceled.connect(lambda: setattr(main_window, 'indexing_cancelled', True))
     main_window.indexing_progress.setValue(0)
+    main_window.indexing_progress.canceled.connect(lambda: setattr(main_window, 'indexing_cancelled', True))
     main_window.indexing_progress.show()
     
     # Perform indexing
-    result = _perform_indexing_with_updates(main_window)
+    result = _perform_indexing_with_updates(main_window, enable_name_matching)
     
     # Clean up
     if hasattr(main_window, 'indexing_progress'):
@@ -40,12 +44,13 @@ def index_sources(main_window):
     
     return result
 
-def _perform_indexing_with_updates(main_window):
+def _perform_indexing_with_updates(main_window, enable_name_matching=False):
     """
     Perform the actual indexing with UI updates
     
     Args:
         main_window: The main application window
+        enable_name_matching: Whether to enable name matching with Steam
     
     Returns:
         Number of executables found
@@ -67,7 +72,7 @@ def _perform_indexing_with_updates(main_window):
         
         source_dir = main_window.source_dirs_combo.itemText(i)
         if os.path.exists(source_dir):
-            source_count += traverse_source_directory(main_window, source_dir, source_dir)
+            source_count += traverse_source_directory(main_window, source_dir, source_dir, enable_name_matching)
     
     # Update status bar
     main_window.statusBar().showMessage(f"Indexed {source_count} executables", 3000)
@@ -99,8 +104,19 @@ def _finish_indexing(main_window):
         # If it was added to status bar, remove it
         main_window.statusBar().removeWidget(main_window.cancel_indexing_button)
 
-def traverse_source_directory(main_window, current_dir_path, source_root_path):
-    """Traverse a source directory looking for executables"""
+def traverse_source_directory(main_window, current_dir_path, source_root_path, enable_name_matching=False):
+    """
+    Traverse a source directory looking for executables
+    
+    Args:
+        main_window: The main application window
+        current_dir_path: The current directory path
+        source_root_path: The source root path
+        enable_name_matching: Whether to enable name matching with Steam
+    
+    Returns:
+        Number of executables added
+    """
     # Initialize counter for executables added
     added_exe_count = 0
     
@@ -118,9 +134,10 @@ def traverse_source_directory(main_window, current_dir_path, source_root_path):
         exclude_exe_set=main_window.exclude_exe_set
     )
     
-    # Debug output for Steam cache
-    print(f"Steam title cache has {len(main_window.steam_title_cache)} entries")
-    print(f"Normalized Steam match index has {len(main_window.normalized_steam_match_index)} entries")
+    # Debug output for Steam cache if name matching is enabled
+    if enable_name_matching:
+        print(f"Steam title cache has {len(main_window.steam_title_cache)} entries")
+        print(f"Normalized Steam match index has {len(main_window.normalized_steam_match_index)} entries")
     
     # Process the directory
     try:
@@ -136,69 +153,42 @@ def traverse_source_directory(main_window, current_dir_path, source_root_path):
                 if hasattr(main_window, 'indexing_cancelled') and main_window.indexing_cancelled:
                     return added_exe_count
                 
-                try:
-                    entry_path = os.path.join(current_dir_path, entry.name)
-                    
-                    # Skip excluded folders
-                    if entry.is_dir(follow_symlinks=False):
-                        # Check if folder should be excluded - exact match only
-                        should_exclude = False
-                        if hasattr(main_window, 'folder_exclude_set') and main_window.folder_exclude_set:
-                            if entry.name.lower() in (item.lower() for item in main_window.folder_exclude_set if item):
-                                print(f"Skipping excluded folder (exact match): {entry.name}")
-                                should_exclude = True
-                        
-                        if not should_exclude:
-                            # Recursively process subdirectory
-                            added_exe_count += traverse_source_directory(main_window, entry_path, source_root_path)
-                    
-                    elif entry.is_file(follow_symlinks=False) and entry.name.lower().endswith('.exe'):
-                        # Process executable file
+                # Get the entry path
+                entry_path = entry.path
+                
+                # Skip if this is a directory to exclude
+                dir_name = os.path.basename(entry_path)
+                if entry.is_dir() and dir_name.lower() in main_window.folder_exclude_set:
+                    print(f"Skipping excluded directory: {entry_path}")
+                    continue
+                
+                # Process subdirectories recursively
+                if entry.is_dir():
+                    added_exe_count += traverse_source_directory(main_window, entry_path, source_root_path, enable_name_matching)
+                
+                # Process executable files
+                elif entry.is_file() and entry.name.lower().endswith('.exe'):
+                    try:
+                        # Get the executable name and path
                         exec_name = entry.name
-                        exec_full_path = os.path.normpath(entry_path)
+                        exec_full_path = entry_path
                         exec_full_path_lower = exec_full_path.lower()
                         
-                        # Debug output for filtering
-                        print(f"Found executable: {exec_name}")
-
-                        # Skip if already processed
+                        # Skip if this executable is in the exclude set
+                        if exec_name.lower() in main_window.exclude_exe_set:
+                            print(f"Skipping excluded executable: {exec_name}")
+                            continue
+                        
+                        # Skip if we've already processed this executable
                         if hasattr(main_window, 'found_executables_cache') and exec_full_path_lower in main_window.found_executables_cache:
-                            print(f"Skipping already processed: {exec_name}")
+                            print(f"Skipping already processed executable: {exec_full_path}")
                             continue
                         
-                        # Skip if in exclude_exe_set
-                        should_skip = False
-                        if hasattr(main_window, 'exclude_exe_set') and main_window.exclude_exe_set:
-                            for not_item in main_window.exclude_exe_set:
-                                if not_item and not_item.lower() in exec_name.lower():
-                                    print(f"Skipping due to exclude_exe.set match: {exec_name} contains '{not_item}'")
-                                    should_skip = True
-                                    break
-                        if should_skip:
-                            continue
-                        
-                        # Get directory path
+                        # Get the directory path
                         dir_path = os.path.dirname(exec_full_path)
                         
-                        # Update progress dialog message
-                        if hasattr(main_window, 'indexing_progress') and main_window.indexing_progress:
-                            main_window.indexing_progress.setLabelText(f"Processing: {exec_name}")
-                            QCoreApplication.processEvents()
-                        
-                        # Determine if this should be checked by default (not in demoted_set)
+                        # Check if this is a game executable (not a utility or helper)
                         include_checked = True
-                        if hasattr(main_window, 'demoted_set') and main_window.demoted_set:
-                            for nor_item in main_window.demoted_set:
-                                # Skip very short items (less than 3 characters)
-                                if not nor_item or len(nor_item) < 3:
-                                    continue
-                                    
-                                # Check if the directory name contains the demoted item
-                                dir_name = os.path.basename(dir_path)
-                                if nor_item.lower() in dir_name.lower():
-                                    include_checked = False
-                                    print(f"Demoting due to demoted.set match: '{dir_name}' contains '{nor_item}'")
-                                    break
                         
                         # Get directory name for display name processing
                         dir_name = os.path.basename(dir_path)
@@ -207,13 +197,13 @@ def traverse_source_directory(main_window, current_dir_path, source_root_path):
                         name_override = name_processor.get_display_name(dir_name)
                         print(f"Name processor result: '{dir_name}' -> '{name_override}'")
 
-                        # Try to match with Steam
+                        # Try to match with Steam if name matching is enabled
                         steam_name = ""
                         steam_id = ""
 
-                        if hasattr(main_window, 'normalized_steam_match_index') and main_window.normalized_steam_match_index:
+                        if enable_name_matching and hasattr(main_window, 'normalized_steam_match_index') and main_window.normalized_steam_match_index:
                             # Get the match name using the name processor - use the cleaned name_override
-                            match_name = name_processor.get_match_name(name_override)
+                            match_name = normalize_name_for_matching(name_override)
                             print(f"Match name transformation: '{name_override}' -> '{match_name}'")
                             
                             # Check if we have a match in the normalized index
@@ -221,54 +211,100 @@ def traverse_source_directory(main_window, current_dir_path, source_root_path):
                                 match_data = main_window.normalized_steam_match_index[match_name]
                                 steam_name = match_data["name"]
                                 steam_id = match_data["id"]
-                                print(f"STEAM MATCH FOUND: '{steam_name}' (ID: {steam_id})")
+                                print(f"Found Steam match: '{steam_name}' (ID: {steam_id})")
                                 
-                                # If we have a Steam match, use it for the name override
-                                if steam_name:
-                                    from Python.ui.name_utils import make_safe_filename
-                                    name_override = make_safe_filename(steam_name)
-                                    print(f"Using Steam name for override: '{steam_name}' -> '{name_override}'")
-                            else:
-                                # If no match with the processed name, try with the original directory name
-                                # This is a fallback for cases where our processing might be too aggressive
-                                from Python.ui.name_utils import normalize_name_for_matching
-                                
-                                # Use the already cleaned name_override instead of the original dir_name
-                                # But DON'T use the stemmer for this fallback attempt to avoid over-processing
-                                norm_dir_name = normalize_name_for_matching(name_override, None)  # Pass None instead of stemmer
-                                
-                                print(f"Looking for Steam match with cleaned name (no stemming): '{name_override}' -> normalized: '{norm_dir_name}'")
-                                
-                                if norm_dir_name and norm_dir_name in main_window.normalized_steam_match_index:
-                                    match_data = main_window.normalized_steam_match_index[norm_dir_name]
-                                    steam_name = match_data["name"]
-                                    steam_id = match_data["id"]
-                                    print(f"STEAM MATCH FOUND (fallback): '{steam_name}' (ID: {steam_id})")
-                                    
-                                    # If we have a Steam match, use it for the name override
-                                    if steam_name:
-                                        from Python.ui.name_utils import make_safe_filename
-                                        name_override = make_safe_filename(steam_name)
-                                        print(f"Using Steam name for override: '{steam_name}' -> '{name_override}'")
-
-                        # Add to the editor table
-                        add_executable_to_editor_table(
-                            main_window,
-                            include_checked=include_checked,
-                            exec_name=exec_name,
-                            directory=dir_path,
-                            steam_name=steam_name,
-                            name_override=name_override,
-                            options="",
-                            arguments="",
-                            steam_id=steam_id,
-                            as_admin=False,
-                            no_tb=False
-                        )
+                                # Use the Steam name as the name override if it's different
+                                if steam_name and steam_name != name_override:
+                                    name_override = steam_name
+                                    print(f"Using Steam name as override: '{name_override}'")
                         
-                        # Add to cache
-                        if hasattr(main_window, 'found_executables_cache'):
-                            main_window.found_executables_cache.add(exec_full_path_lower)
+                        # Add to the found executables cache
+                        main_window.found_executables_cache.add(exec_full_path_lower)
+                        
+                        # Add to the editor table
+                        row_position = main_window.editor_table.rowCount()
+                        main_window.editor_table.insertRow(row_position)
+                        
+                        # Create a checkbox for the Include column
+                        include_checkbox = QCheckBox()
+                        include_checkbox.setChecked(include_checked)
+                        include_checkbox_widget = QWidget()
+                        include_checkbox_layout = QHBoxLayout(include_checkbox_widget)
+                        include_checkbox_layout.addWidget(include_checkbox)
+                        include_checkbox_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                        include_checkbox_layout.setContentsMargins(0, 0, 0, 0)
+                        
+                        # Set the items in the table
+                        main_window.editor_table.setCellWidget(row_position, 0, include_checkbox_widget)
+                        main_window.editor_table.setItem(row_position, 1, QTableWidgetItem(exec_name))
+                        main_window.editor_table.setItem(row_position, 2, QTableWidgetItem(dir_path))
+                        main_window.editor_table.setItem(row_position, 3, QTableWidgetItem(steam_name))
+                        main_window.editor_table.setItem(row_position, 4, QTableWidgetItem(name_override))
+                        main_window.editor_table.setItem(row_position, 5, QTableWidgetItem(""))
+                        main_window.editor_table.setItem(row_position, 6, QTableWidgetItem(""))
+                        main_window.editor_table.setItem(row_position, 7, QTableWidgetItem(steam_id))
+                        
+                        # Get deployment tab settings to populate path fields with CEN/LC indicators
+                        # Columns 8-20 are path fields that should use < for CEN and > for LC
+                        path_columns = {
+                            8: "p1_profile_edit",
+                            9: "p2_profile_edit",
+                            10: "controller_mapper_app_line_edit",
+                            11: "multimonitor_gaming_config_edit",
+                            12: "multimonitor_media_config_edit",
+                            13: "post_launch_app_line_edit_0",
+                            14: "post_launch_app_line_edit_1",
+                            15: "post_launch_app_line_edit_2",
+                            16: "pre_launch_app_line_edit_0",
+                            17: "pre_launch_app_line_edit_1",
+                            18: "pre_launch_app_line_edit_2",
+                            19: "after_launch_app_line_edit",
+                            20: "before_exit_app_line_edit"
+                        }
+                        
+                        # Check if deployment_path_options exists
+                        if hasattr(main_window, 'deployment_path_options'):
+                            for col, path_key in path_columns.items():
+                                # Default to CEN
+                                indicator = "<"
+                                
+                                # Check if we have a radio group for this path
+                                if path_key in main_window.deployment_path_options:
+                                    radio_group = main_window.deployment_path_options[path_key]
+                                    checked_button = radio_group.checkedButton()
+                                    if checked_button and checked_button.text() == "LC":
+                                        indicator = ">"
+                            
+                                main_window.editor_table.setItem(row_position, col, QTableWidgetItem(indicator))
+                        else:
+                            # If no deployment_path_options, default all to CEN
+                            for col in range(8, 21):
+                                main_window.editor_table.setItem(row_position, col, QTableWidgetItem("<"))
+                        
+                        # Set borderless status (E for enabled, K for terminates on exit, blank for not enabled)
+                        borderless_value = ""
+                        if hasattr(main_window, 'enable_borderless_windowing_checkbox') and main_window.enable_borderless_windowing_checkbox.isChecked():
+                            borderless_value = "E"
+                            if hasattr(main_window, 'terminate_bw_on_exit_checkbox') and main_window.terminate_bw_on_exit_checkbox.isChecked():
+                                borderless_value = "K"
+                        main_window.editor_table.setItem(row_position, 21, QTableWidgetItem(borderless_value))
+                        
+                        # Use deployment tab settings for AsAdmin and NoTB if not explicitly provided
+                        as_admin = False
+                        if hasattr(main_window, 'run_as_admin_checkbox'):
+                            as_admin = main_window.run_as_admin_checkbox.isChecked()
+                        
+                        no_tb = False
+                        if hasattr(main_window, 'hide_taskbar_checkbox'):
+                            no_tb = main_window.hide_taskbar_checkbox.isChecked()
+                        
+                        # Create AsAdmin checkbox
+                        as_admin_widget = create_status_widget(main_window, as_admin, row_position, 22)
+                        main_window.editor_table.setCellWidget(row_position, 22, as_admin_widget)
+                        
+                        # Create NoTB checkbox
+                        no_tb_widget = create_status_widget(main_window, no_tb, row_position, 23)
+                        main_window.editor_table.setCellWidget(row_position, 23, no_tb_widget)
                         
                         # Update counter
                         added_exe_count += 1
@@ -276,11 +312,11 @@ def traverse_source_directory(main_window, current_dir_path, source_root_path):
                         # Process UI events after each executable
                         QCoreApplication.processEvents()
                         
-                except PermissionError:
-                    continue
-                except Exception as e:
-                    print(f"Error processing {entry_path}: {e}")
-                    continue
+                    except PermissionError:
+                        continue
+                    except Exception as e:
+                        print(f"Error processing {entry_path}: {e}")
+                        continue
     
     except PermissionError:
         print(f"Permission denied: {current_dir_path}")
@@ -314,13 +350,13 @@ def get_editor_table_data(editor_table):
         else:
             borderless_value = "No"
         
-        # Get UOC/LC indicators for path fields
+        # Get CEN/LC indicators for path fields
         path_indicators = {}
         for col in range(8, 21):
             item = editor_table.item(row, col)
             if item:
                 indicator = item.text()
-                # Store the indicator (< for UOC, > for LC)
+                # Store the indicator (< for CEN, > for LC)
                 path_indicators[f"col_{col}_indicator"] = indicator
         
         row_data = {
@@ -428,8 +464,8 @@ def add_executable_to_editor_table(main_window, include_checked=True, exec_name=
     main_window.editor_table.setItem(row, 6, QTableWidgetItem(arguments))
     main_window.editor_table.setItem(row, 7, QTableWidgetItem(steam_id))
     
-    # Get deployment tab settings to populate path fields with UOC/LC indicators
-    # Columns 8-20 are path fields that should use < for UOC and > for LC
+    # Get deployment tab settings to populate path fields with CEN/LC indicators
+    # Columns 8-20 are path fields that should use < for CEN and > for LC
     path_columns = {
         8: "p1_profile_edit",
         9: "p2_profile_edit",
@@ -449,7 +485,7 @@ def add_executable_to_editor_table(main_window, include_checked=True, exec_name=
     # Check if deployment_path_options exists
     if hasattr(main_window, 'deployment_path_options'):
         for col, path_key in path_columns.items():
-            # Default to UOC
+            # Default to CEN
             indicator = "<"
             
             # Check if we have a radio group for this path
@@ -461,7 +497,7 @@ def add_executable_to_editor_table(main_window, include_checked=True, exec_name=
             
             main_window.editor_table.setItem(row, col, QTableWidgetItem(indicator))
     else:
-        # If no deployment_path_options, default all to UOC
+        # If no deployment_path_options, default all to CEN
         for col in range(8, 21):
             main_window.editor_table.setItem(row, col, QTableWidgetItem("<"))
     

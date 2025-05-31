@@ -41,11 +41,11 @@ def save_index(main_window, directory, data):
                     if 8 <= i <= 20:  # Path fields (columns 8-20)
                         # Use the indicator from path_indicators if available
                         col = i
-                        indicator = path_indicators.get(f"col_{col}_indicator", "<")  # Default to UOC
+                        indicator = path_indicators.get(f"col_{col}_indicator", "<")  # Default to CEN
                         # If no indicator, use the value from the field
                         if f"col_{col}_indicator" not in path_indicators and field in row:
                             indicator = row[field]
-                        # If still no indicator, default to UOC
+                        # If still no indicator, default to CEN
                         if not indicator:
                             indicator = "<"
                         row_values.append(indicator)

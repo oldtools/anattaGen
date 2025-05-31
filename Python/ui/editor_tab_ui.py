@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
-    QTableWidgetItem, QHeaderView, QCheckBox, QMenu, QFileDialog
+    QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
+    QHeaderView, QMenu, QWidget, QListWidget, QListWidgetItem
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 
 def create_editor_tab_item_status_widget(parent, initial_text="", row=-1, col=-1, data_key=None):
     """Create a widget containing a checkbox for table cells
@@ -81,6 +81,7 @@ def populate_editor_tab(main_window):
     regenerate_names_button = QPushButton("Regenerate All Names")
     regenerate_names_button.clicked.connect(main_window._regenerate_all_names)
     regenerate_names_button.setToolTip("Regenerate all name overrides in the table")
+    regenerate_names_button.setVisible(False)
     button_layout.addWidget(regenerate_names_button)
     
     # Add spacer to push buttons to the left

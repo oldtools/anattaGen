@@ -36,15 +36,19 @@ class ProfileManager:
         # Get the profile folder path
         profile_folder_path = self.get_profile_folder_path(game_data)
         if not profile_folder_path:
-            return False
+            return {'created': False, 'updated': False}
+        
+        # Check if the profile folder already exists
+        folder_exists = os.path.exists(profile_folder_path)
         
         # Create the profile folder if it doesn't exist
         try:
             os.makedirs(profile_folder_path, exist_ok=True)
-            return True
+            print(f"{'Created' if not folder_exists else 'Using existing'} profile folder: {profile_folder_path}")
+            return {'created': not folder_exists, 'updated': folder_exists}
         except Exception as e:
             print(f"Error creating profile folder: {e}")
-            return False
+            return {'created': False, 'updated': False}
     
     def propagate_assets(self, game_data, profile_folder_path):
         """Propagate assets to the profile folder"""
@@ -173,4 +177,5 @@ class ProfileManager:
             })
         
         return paths
+
 

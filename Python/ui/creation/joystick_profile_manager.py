@@ -23,7 +23,6 @@ class JoystickProfileManager:
         # Try to get profiles directory from config if not available in UI
         if not profiles_dir or not os.path.isdir(profiles_dir):
             try:
-                import configparser
                 config = configparser.ConfigParser()
                 script_dir = os.path.dirname(os.path.abspath(__file__))
                 app_root_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
@@ -191,4 +190,5 @@ class JoystickProfileManager:
         
         # Otherwise, use the profile folder
         return os.path.join(profile_folder_path, file_name)
+
 

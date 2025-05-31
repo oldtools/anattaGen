@@ -4,7 +4,7 @@ import re
 from PyQt6.QtWidgets import QFileDialog
 from PyQt6.QtCore import QCoreApplication
 from Python.ui.name_utils import normalize_name_for_matching
-from Python.ui.steam_cache import STEAM_FILTERED_TXT # Only import constant, not function
+from Python.ui.steam_cache import STEAM_FILTERED_TXT, NORMALIZED_INDEX_CACHE # Only import constants, not functions
 
 class SteamProcessor:
     def __init__(self, main_window, steam_cache_manager):
@@ -15,6 +15,9 @@ class SteamProcessor:
         """Prompt user to select and process Steam JSON file"""
         file_path, _ = QFileDialog.getOpenFileName(self.main_window, "Select Steam JSON file", "", "JSON Files (*.json);;All Files (*)")
         if file_path:
+            # Backup existing cache files before processing
+            self._backup_steam_cache_files()
+            
             # Disable UI elements
             self._disable_ui_elements()
             self.main_window.statusBar().showMessage("Please be patient as the steam.json file is cached...", 0)
@@ -267,3 +270,45 @@ class SteamProcessor:
         
         # Process events to update UI
         QCoreApplication.processEvents()
+
+    def _backup_steam_cache_files(self):
+        """Backup Steam cache files before processing"""
+        import os
+        import shutil
+        
+        # Get the app's root directory
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        app_root_dir = os.path.dirname(os.path.dirname(script_dir))
+        
+        # Get the cache file paths
+        from Python.ui.steam_cache import STEAM_FILTERED_TXT, NORMALIZED_INDEX_CACHE
+        filtered_cache_path = os.path.join(app_root_dir, STEAM_FILTERED_TXT)
+        normalized_index_path = os.path.join(app_root_dir, NORMALIZED_INDEX_CACHE)
+        
+        # Backup filtered cache if it exists
+        if os.path.exists(filtered_cache_path):
+            backup_path = filtered_cache_path + ".old"
+            try:
+                # Remove old backup if it exists
+                if os.path.exists(backup_path):
+                    os.remove(backup_path)
+                
+                # Create backup
+                shutil.copy2(filtered_cache_path, backup_path)
+                print(f"Backed up {STEAM_FILTERED_TXT} to {backup_path}")
+            except Exception as e:
+                print(f"Error backing up {STEAM_FILTERED_TXT}: {e}")
+        
+        # Backup normalized index if it exists
+        if os.path.exists(normalized_index_path):
+            backup_path = normalized_index_path + ".old"
+            try:
+                # Remove old backup if it exists
+                if os.path.exists(backup_path):
+                    os.remove(backup_path)
+                
+                # Create backup
+                shutil.copy2(normalized_index_path, backup_path)
+                print(f"Backed up {NORMALIZED_INDEX_CACHE} to {backup_path}")
+            except Exception as e:
+                print(f"Error backing up {NORMALIZED_INDEX_CACHE}: {e}")

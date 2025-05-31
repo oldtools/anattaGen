@@ -13,7 +13,7 @@ class ConfigWriter:
         """Initialize with the main window reference"""
         self.main_window = main_window
     
-    def process_game_config(self, game_data, create_profile_folders):
+    def process_game_config(self, game_data, create_profile_folders, launch_sequence=None, exit_sequence=None):
         """Create or update the Game.ini configuration file"""
         # Get the profiles directory
         profiles_dir = self.main_window.profiles_dir_edit.text() if hasattr(self.main_window, 'profiles_dir_edit') else None
@@ -21,7 +21,6 @@ class ConfigWriter:
         # Try to get profiles directory from config if not available in UI
         if not profiles_dir or not os.path.isdir(profiles_dir):
             try:
-                # Import configparser is already imported at the module level
                 config = configparser.ConfigParser()
                 script_dir = os.path.dirname(os.path.abspath(__file__))
                 app_root_dir = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
@@ -39,47 +38,44 @@ class ConfigWriter:
         
         if not profiles_dir or not os.path.isdir(profiles_dir):
             print(f"Profiles directory not found or invalid: '{profiles_dir}'")
-            return False
+            return {'created': False, 'updated': False}
         
-        # Get the game name from name_override
-        game_name = game_data['name_override']
+        # Get the game name
+        game_name = game_data.get('name_override', '')
         if not game_name:
-            print(f"Game name not found for {game_data['executable']}")
-            return False
+            print(f"Game name not found for {game_data.get('executable', 'unknown')}")
+            return {'created': False, 'updated': False}
         
         # Create the profile folder path
         profile_folder_path = os.path.join(profiles_dir, game_name)
         
-        # Check if the profile folder exists
-        if not os.path.exists(profile_folder_path) and not create_profile_folders:
-            print(f"Profile folder does not exist and create_profile_folders is False: {profile_folder_path}")
-            return False
-        
-        # Make sure the profile folder exists
-        os.makedirs(profile_folder_path, exist_ok=True)
-        
-        # Create the config file path
-        config_file_path = os.path.join(profile_folder_path, "Game.ini")
-        
-        # Check if the config file exists
-        config_exists = os.path.exists(config_file_path)
-        
-        # Create the config parser
-        config = configparser.ConfigParser()
-        config.optionxform = str  # Preserve case for keys
-        
-        # If the config file exists, load it
-        if config_exists:
+        # Create the profile folder if it doesn't exist
+        if create_profile_folders and not os.path.exists(profile_folder_path):
             try:
-                config.read(config_file_path, encoding='utf-8')
+                os.makedirs(profile_folder_path)
+                print(f"Created profile folder: {profile_folder_path}")
             except Exception as e:
-                print(f"Error reading config file: {e}")
-                # Create a new config
-                config = configparser.ConfigParser()
-                config.optionxform = str  # Preserve case for keys
+                print(f"Error creating profile folder: {e}")
+                return {'created': False, 'updated': False}
+        
+        # Create the Game.ini file path
+        game_ini_path = os.path.join(profile_folder_path, "Game.ini")
+        
+        # Check if the Game.ini file exists
+        game_ini_exists = os.path.exists(game_ini_path)
+        
+        # Create or update the Game.ini file
+        config = configparser.ConfigParser()
+        
+        # Read the existing file if it exists
+        if game_ini_exists:
+            try:
+                config.read(game_ini_path, encoding='utf-8')
+            except Exception as e:
+                print(f"Error reading existing Game.ini: {e}")
         
         # Ensure all sections exist
-        for section in ['Game', 'Paths', 'Options', 'PreLaunch', 'PostLaunch']:
+        for section in ['Game', 'Paths', 'Options', 'PreLaunch', 'PostLaunch', 'Sequences']:
             if section not in config:
                 config[section] = {}
         
@@ -88,15 +84,15 @@ class ConfigWriter:
         game_section['Name'] = game_name
         game_section['Executable'] = game_data['executable']
         game_section['Directory'] = game_data['directory']
-        game_section['SteamTitle'] = game_data['steam_title']
-        game_section['SteamID'] = game_data['steam_id']
-        game_section['Options'] = game_data['options']
-        game_section['Arguments'] = game_data['arguments']
+        game_section['SteamTitle'] = game_data.get('steam_title', '')
+        game_section['SteamID'] = game_data.get('steam_id', '')
+        game_section['Options'] = game_data.get('options', '')
+        game_section['Arguments'] = game_data.get('arguments', '')
         
         # Update the Options section
         options_section = config['Options']
-        options_section['RunAsAdmin'] = '1' if game_data['as_admin'] else '0'
-        options_section['HideTaskbar'] = '1' if game_data['no_tb'] else '0'
+        options_section['RunAsAdmin'] = '1' if game_data.get('as_admin', False) else '0'
+        options_section['HideTaskbar'] = '1' if game_data.get('no_tb', False) else '0'
         
         # Add UseKillList option
         if hasattr(self.main_window, 'use_kill_list_checkbox'):
@@ -230,17 +226,24 @@ class ConfigWriter:
             for i, cb in enumerate(self.main_window.post_launch_run_wait_checkboxes):
                 paths_section[f'PostLaunchApp{i+1}RunWait'] = '1' if cb.isChecked() else '0'
         
-        # Write the config file
+        # Update the Sequences section with launch and exit sequences
+        sequences_section = config['Sequences']
+        
+        # Save launch sequence
+        if launch_sequence:
+            sequences_section['LaunchSequence'] = ','.join(launch_sequence)
+        
+        # Save exit sequence
+        if exit_sequence:
+            sequences_section['ExitSequence'] = ','.join(exit_sequence)
+        
+        # Write the Game.ini file
         try:
-            with open(config_file_path, 'w', encoding='utf-8') as f:
+            with open(game_ini_path, 'w', encoding='utf-8') as f:
                 config.write(f)
-            return True
+            print(f"{'Updated' if game_ini_exists else 'Created'} Game.ini: {game_ini_path}")
+            return {'created': not game_ini_exists, 'updated': game_ini_exists}
         except Exception as e:
-            print(f"Error writing config file: {e}")
-            return False
-
-
-
-
-
+            print(f"Error writing Game.ini: {e}")
+            return {'created': False, 'updated': False}
 
