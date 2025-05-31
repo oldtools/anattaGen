@@ -85,7 +85,9 @@ anattaGen
 			│   ├──  main_window_new.py
 			│   ├──  release_groups.set
 			│   ├──  repos.set
+			│   │
 			│   └──  ui
+			│        ├──  accordion.py
 			│        ├──  config_manager.py
 			│        ├──  deployment_tab_ui.py
 			│        ├──  editor_tab_ui.py
@@ -100,15 +102,21 @@ anattaGen
 			│        ├──  steam_utils.py
 			│        ├──  title_identifier.py
 			│        ├──  ui_widgets.py
+			│        ├──  widgets.py
+			│        ├──  widgets
+			│        │   ├──  __init__.py
+			│        │   └──   drag_drop_list.py
+			│        │
 			│        └──  creation
-			│            ├──  shortcut_manager.py
 			│            ├──  __init__.py
 			│            ├──  config_writer.py
-			│            ├──  _controller.py
+			│            ├──  creation_controller.py
 			│            ├──  file_propagator.py
 			│            ├──  joystick_profile_manager.py
+			│            ├──  launcher_cretor.py
 			│            ├──  launcher_manager.py
-			│            └──    profile_manager.py
+			│            ├──  shortcut_manager.py
+			│            └──  profile_manager.py
 			│
 			├──  site
 			│   ├──  AnkaCoder_b.otf
