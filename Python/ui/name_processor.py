@@ -10,7 +10,6 @@ class NameProcessor:
     
     def __init__(self, 
                  release_groups_set: Optional[set[str]] = None,
-                 folder_exclude_set: Optional[set[str]] = None,
                  exclude_exe_set: Optional[set[str]] = None,
                  source_dirs: Optional[list[str]] = None):
         """
@@ -18,12 +17,10 @@ class NameProcessor:
         
         Args:
             release_groups_set: Set of release group names to remove from game titles
-            folder_exclude_set: Set of folder names to exclude when walking up directory tree
             exclude_exe_set: Set of executable name patterns to exclude
             source_dirs: List of source directories being scanned
         """
         self.release_groups_set = release_groups_set or set()
-        self.folder_exclude_set = folder_exclude_set or set()
         self.exclude_exe_set = exclude_exe_set or set()
         self.source_dirs = source_dirs or []
         
@@ -86,7 +83,7 @@ class NameProcessor:
         result = self.final_cleanup(result)
         
         if original != result:
-            print(f"Display name transformation: '{original}' -> '{result}'")
+            pass
         
         return result
     
@@ -143,7 +140,7 @@ class NameProcessor:
                     prev_result = result
                     # Replace only the group, keeping the delimiter
                     result = pattern.sub('', result)
-                    print(f"Removed release group at end: '{delimiter}{group}' from '{prev_result}' -> '{result}'")
+
                     # Exit both loops after first match
                     break
             
@@ -164,7 +161,7 @@ class NameProcessor:
                     prev_result = result
                     # Remove only the group at the end
                     result = re.sub(pattern, '', result)
-                    print(f"Removed trailing release group: '{group}' from '{prev_result}' -> '{result}'")
+
                     # Exit the loop after first match
                     break
         
@@ -172,7 +169,7 @@ class NameProcessor:
         result = result.rstrip('.-_[] ')
         
         if original != result:
-            print(f"Release group tags culled: '{original}' -> '{result}'")
+            pass
         
         return result
     
@@ -214,7 +211,7 @@ class NameProcessor:
                 start_pos = match.start()
                 # Remove the version identifier and everything after it
                 result = result[:start_pos]
-                print(f"Removed version identifier and everything after: '{prev_result}' -> '{result}'")
+
                 break
         
         # Second pass: Check for specific complete phrases at the end
@@ -234,7 +231,7 @@ class NameProcessor:
                     if pattern.search(result):
                         prev_result = result
                         result = pattern.sub('', result)
-                        print(f"Removed specific phrase with delimiter: '{delimiter}{phrase}' from '{prev_result}' -> '{result}'")
+
                         # Exit both loops after first match
                         break
                 
@@ -246,7 +243,7 @@ class NameProcessor:
         result = result.rstrip('.-_[] ')
         
         if original != result:
-            print(f"Version tags culled: '{original}' -> '{result}'")
+            pass
         
         return result
     
@@ -349,14 +346,14 @@ class NameProcessor:
             if pattern.search(result):
                 prev_result = result
                 result = pattern.sub('', result)
-                print(f"Final cleanup - removed release group at end: '{group}' from '{prev_result}' -> '{result}'")
+
                 # Clean up whitespace again
                 result = self.clean_whitespace(result)
         
         # Final check for version tags and specific phrases - ONLY AT THE END
         specific_phrases = [
             "early access", "beta", "alpha", "demo", "trial", "playtest", "preview",
-            "remastered", "remaster", "hd", "developer", "dev", "prerelease"
+            "remastered edition", "remaster", "hd", "developer", "dev", "prerelease"
         ]
         
         for phrase in specific_phrases:
@@ -364,7 +361,7 @@ class NameProcessor:
             if pattern.search(result):
                 prev_result = result
                 result = pattern.sub('', result)
-                print(f"Final cleanup - removed phrase at end: '{phrase}' from '{prev_result}' -> '{result}'")
+
                 # Clean up whitespace again
                 result = self.clean_whitespace(result)
         
@@ -380,7 +377,7 @@ class NameProcessor:
             if match:
                 prev_result = result
                 result = result[:match.start()] + result[match.end():]
-                print(f"Final cleanup - removed version pattern: '{match.group(0)}' from '{prev_result}' -> '{result}'")
+
                 # Clean up whitespace again
                 result = self.clean_whitespace(result)
         
@@ -394,7 +391,7 @@ class NameProcessor:
         result = self.clean_whitespace(result)
         
         if original != result:
-            print(f"Final cleanup: '{original}' -> '{result}'")
+            pass
         
         return result
     
@@ -428,7 +425,7 @@ class NameProcessor:
         result = result.lower()
         
         if original != result:
-            print(f"Match name transformation: '{original}' -> '{result}'")
+            pass
         
         return result
     
@@ -464,7 +461,7 @@ class NameProcessor:
                     stemmed_words = [stemmer.stem(word) for word in words]
                     result = ' '.join(stemmed_words)
             except Exception as e:
-                print(f"Error applying stemming: {e}")
+                pass
         
         # Step 4: Remove all remaining spaces (commas already removed by regex)
         result = result.replace(' ', '')
@@ -473,7 +470,7 @@ class NameProcessor:
         result = result.lower()
         
         if original != result:
-            print(f"Match name transformation: '{original}' -> '{result}'")
+            pass
         
         return result
     
@@ -572,7 +569,7 @@ class NameProcessor:
     def find_candidate_directory(self, exec_path: str) -> Tuple[str, bool]:
         """
         Finds the most suitable candidate directory name for a given executable path.
-        Walks up the directory tree, considering source directories and excluded folders.
+        Walks up the directory tree, considering source directories.
         
         Args:
             exec_path: The full path to the executable.
@@ -597,13 +594,6 @@ class NameProcessor:
             parent_dir = os.path.dirname(directory)
             if parent_dir in self.source_dirs:
                 return base_name, False
-            
-            # If the current directory name is in the exclude set, go up one more level
-            if base_name.lower() in self.folder_exclude_set:
-                if directory == parent_dir: # Reached root
-                    break
-                directory = parent_dir
-                continue
             
             # If we've gone up to the root or the directory hasn't changed, break
             if directory == parent_dir:

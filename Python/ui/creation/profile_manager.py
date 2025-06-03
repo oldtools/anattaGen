@@ -19,13 +19,13 @@ class ProfileManager:
         # Get the profiles directory
         profiles_dir = self.main_window.profiles_dir_edit.text()
         if not profiles_dir or not os.path.isdir(profiles_dir):
-            print(f"Profiles directory not found: {profiles_dir}")
+
             return None
         
         # Get the game name from name_override
         game_name = game_data['name_override']
         if not game_name:
-            print(f"Game name not found for {game_data['executable']}")
+
             return None
         
         # Create the profile folder path
@@ -44,16 +44,16 @@ class ProfileManager:
         # Create the profile folder if it doesn't exist
         try:
             os.makedirs(profile_folder_path, exist_ok=True)
-            print(f"{'Created' if not folder_exists else 'Using existing'} profile folder: {profile_folder_path}")
+
             return {'created': not folder_exists, 'updated': folder_exists}
         except Exception as e:
-            print(f"Error creating profile folder: {e}")
+
             return {'created': False, 'updated': False}
     
     def propagate_assets(self, game_data, profile_folder_path):
         """Propagate assets to the profile folder"""
         if not profile_folder_path or not os.path.exists(profile_folder_path):
-            print(f"Profile folder not found: {profile_folder_path}")
+
             return 0
         
         # Get the paths to propagate
@@ -78,7 +78,7 @@ class ProfileManager:
                 
                 # Check if the file exists
                 if not os.path.exists(path):
-                    print(f"File not found: {path}")
+
                     continue
                 
                 # Get the destination path
@@ -96,7 +96,7 @@ class ProfileManager:
                         shutil.copytree(path, dest_path)
                         propagated_count += 1
                 except Exception as e:
-                    print(f"Error copying file: {e}")
+                    pass
         
         return propagated_count
     
@@ -177,5 +177,7 @@ class ProfileManager:
             })
         
         return paths
+
+
 
 

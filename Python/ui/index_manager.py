@@ -1,123 +1,182 @@
 import os
 import shutil
 from datetime import datetime
+from PyQt6.QtWidgets import QFileDialog
 
 INDEX_FILENAME = "current.index"
 BACKUP_DIR = "index_backups"
 PIPE_CHAR = "|"
-SAFE_PIPE_CHAR = ""  # U+2502
+SAFE_PIPE_CHAR = ""  # U+2502
 
 
 def save_index(main_window, directory, data):
-    """Save index data to a file"""
-    # Create the directory if it doesn't exist
-    os.makedirs(directory, exist_ok=True)
-    
-    # Create a backup of the current index if it exists
-    backup_index(directory)
+    default_path = os.path.join(directory, INDEX_FILENAME)
+    file_path = default_path
     
     # Save the index
-    path = os.path.join(directory, INDEX_FILENAME)
-    with open(path, "w", encoding="utf-8") as f:
-        for row in data:
-            # Convert dict to list if necessary
-            if isinstance(row, dict):
-                # Define the expected order of fields
-                fields = ["include", "executable", "directory", "steam_title", 
-                          "name_override", "options", "arguments", "steam_id",
-                          "p1_profile", "p2_profile", "desktop_ctrl", 
-                          "game_monitor_cfg", "desktop_monitor_cfg", 
-                          "post1", "post2", "post3", 
-                          "pre1", "pre2", "pre3", 
-                          "just_after", "just_before", "borderless",
-                          "as_admin", "no_tb"]
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            for row in data:
+                # Convert dict to list if necessary
+                if isinstance(row, dict):
+                    # Define the expected order of fields
+                    fields = ["include", "executable", "directory", "steam_title", 
+                              "name_override", "options", "arguments", "steam_id",
+                              "p1_profile", "p2_profile", "desktop_ctrl", 
+                              "game_monitor_cfg", "desktop_monitor_cfg", 
+                              "post1", "post2", "post3", 
+                              "pre1", "pre2", "pre3", 
+                              "just_after", "just_before", "borderless",
+                              "as_admin", "no_tb"]
+                    
+                    # Get path indicators
+                    path_indicators = row.get("path_indicators", {})
+                    
+                    # Create a list of values
+                    row_values = []
+                    for i, field in enumerate(fields):
+                        if 8 <= i <= 20:  # Path fields (columns 8-20)
+                            # Use the indicator from path_indicators if available
+                            col = i
+                            indicator = path_indicators.get(f"col_{col}_indicator", "<")  # Default to CEN
+                            # If no indicator, use the value from the field
+                            if f"col_{col}_indicator" not in path_indicators and field in row:
+                                indicator = row[field]
+                            # If still no indicator, default to CEN
+                            if not indicator:
+                                indicator = "<"
+                            row_values.append(indicator)
+                        else:
+                            row_values.append(row.get(field, ""))
+                else:
+                    # Assume it's already a list
+                    row_values = row
                 
-                # Get path indicators
-                path_indicators = row.get("path_indicators", {})
-                
-                # Create a list of values
-                row_values = []
-                for i, field in enumerate(fields):
-                    if 8 <= i <= 20:  # Path fields (columns 8-20)
-                        # Use the indicator from path_indicators if available
-                        col = i
-                        indicator = path_indicators.get(f"col_{col}_indicator", "<")  # Default to CEN
-                        # If no indicator, use the value from the field
-                        if f"col_{col}_indicator" not in path_indicators and field in row:
-                            indicator = row[field]
-                        # If still no indicator, default to CEN
-                        if not indicator:
-                            indicator = "<"
-                        row_values.append(indicator)
-                    else:
-                        row_values.append(row.get(field, ""))
-            else:
-                # Assume it's already a list
-                row_values = row
-            
-            # Convert all values to strings
-            safe_row = [str(cell).replace(PIPE_CHAR, SAFE_PIPE_CHAR) for cell in row_values]
-            f.write(PIPE_CHAR.join(safe_row) + "\n")
-    
-    # Show a status message if possible
-    if main_window and hasattr(main_window, 'statusBar'):
-        main_window.statusBar().showMessage(f"Saved index to {path}", 3000)
+                # Convert all values to strings
+                safe_row = [str(cell).replace(PIPE_CHAR, SAFE_PIPE_CHAR) for cell in row_values]
+                f.write(PIPE_CHAR.join(safe_row) + "\n")
+        
+        # Show a status message if possible
+        if main_window and hasattr(main_window, 'statusBar'):
+            main_window.statusBar().showMessage(f"Saved index to {file_path}", 3000)
+        
+        return file_path
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        if main_window and hasattr(main_window, 'statusBar'):
+            main_window.statusBar().showMessage(f"Error saving index: {str(e)}", 3000)
+        return None
 
 
-def load_index(main_window=None, directory=None):
+def load_index(main_window=None, directory=None, prompt_for_filename=False):
     """
     Load the index file and return the data as a list of dictionaries.
     
     Args:
         main_window: Optional MainWindow object to update status bar
-        directory: Directory to load the index file from (default: app root)
+        directory: Default directory to load from (default: app root)
+        prompt_for_filename: Whether to prompt for a filename
     
     Returns:
         List of dictionaries with game data
     """
+    import traceback
+    
     # Get the app's root directory if directory is not specified
     if directory is None:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         directory = os.path.dirname(os.path.dirname(script_dir))
     
-    # Find the index file
-    path = os.path.join(directory, INDEX_FILENAME)
-    if not os.path.exists(path):
+    # Default path
+    default_path = os.path.join(directory, INDEX_FILENAME)
+    file_path = default_path
+    
+    # Prompt for filename if requested
+    if prompt_for_filename and main_window:
+        file_path, _ = QFileDialog.getOpenFileName(
+            main_window,
+            "Load Index",
+            directory,
+            "Index Files (*.index);;All Files (*)"
+        )
+        if not file_path:
+            return []
+    
+    # Check if the file exists
+    if not os.path.exists(file_path):
         if main_window and hasattr(main_window, 'statusBar'):
-            main_window.statusBar().showMessage(f"Index file not found: {INDEX_FILENAME}", 3000)
+            main_window.statusBar().showMessage(f"Index file not found: {file_path}", 3000)
         return []
     
     # Load the data
     data = []
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        print(f"Loading index from {file_path}")
+        with open(file_path, "r", encoding="utf-8") as f:
+            line_number = 0
             for line in f:
+                line_number += 1
                 if line.strip():
-                    # Replace safe pipe char back to normal pipe if needed
-                    parts = line.strip().split(PIPE_CHAR)
-                    parts = [p.replace(SAFE_PIPE_CHAR, PIPE_CHAR) if SAFE_PIPE_CHAR else p for p in parts]
-                    
-                    # Convert to dictionary
-                    row = {
-                        "include": parts[0].lower() == "true" if len(parts) > 0 else False,
-                        "executable": parts[1] if len(parts) > 1 else "",
-                        "directory": parts[2] if len(parts) > 2 else "",
-                        "steam_title": parts[3] if len(parts) > 3 else "",
-                        "name_override": parts[4] if len(parts) > 4 else "",
-                        "options": parts[5] if len(parts) > 5 else "",
-                        "arguments": parts[6] if len(parts) > 6 else "",
-                        "steam_id": parts[7] if len(parts) > 7 else "",
-                        "as_admin": parts[8].lower() == "true" if len(parts) > 8 else False,
-                        "no_tb": parts[9].lower() == "true" if len(parts) > 9 else False
-                    }
-                    data.append(row)
+                    try:
+                        # Replace safe pipe char back to normal pipe if needed
+                        parts = line.strip().split(PIPE_CHAR)
+                        parts = [p.replace(SAFE_PIPE_CHAR, PIPE_CHAR) if SAFE_PIPE_CHAR else p for p in parts]
+                        
+                        # Define field names to match save_index
+                        fields = ["include", "executable", "directory", "steam_title", 
+                                  "name_override", "options", "arguments", "steam_id",
+                                  "p1_profile", "p2_profile", "desktop_ctrl", 
+                                  "game_monitor_cfg", "desktop_monitor_cfg", 
+                                  "post1", "post2", "post3", 
+                                  "pre1", "pre2", "pre3", 
+                                  "just_after", "just_before", "borderless",
+                                  "as_admin", "no_tb"]
+                        
+                        # Create a dictionary for this row
+                        row_dict = {}
+                        path_indicators = {}
+                        
+                        # Fill in values from parts
+                        for i, field in enumerate(fields):
+                            if i < len(parts):
+                                # For path fields (columns 8-20), preserve the indicator in the value
+                                if 8 <= i <= 20:
+                                    # Store the indicator (< for CEN, > for LC)
+                                    if parts[i] and (parts[i].startswith('<') or parts[i].startswith('>')):
+                                        path_indicators[f"col_{i}_indicator"] = parts[i][0]
+                                        # Store the value WITH the indicator for propagation
+                                        row_dict[field] = parts[i]
+                                    else:
+                                        path_indicators[f"col_{i}_indicator"] = "<"  # Default to CEN
+                                        row_dict[field] = parts[i]
+                                else:
+                                    # For boolean fields, convert to boolean
+                                    if field in ["include", "as_admin", "no_tb"]:
+                                        row_dict[field] = parts[i].lower() == "true"
+                                    else:
+                                        row_dict[field] = parts[i]
+                        
+                        # Add path indicators to the row dictionary
+                        row_dict["path_indicators"] = path_indicators
+                        
+                        # Add the row to the data
+                        data.append(row_dict)
+                    except Exception as e:
+                        print(f"Error processing line {line_number}: {line.strip()}")
+                        print(f"Error details: {str(e)}")
+                        traceback.print_exc()
+                        # Continue with the next line instead of failing completely
+                        continue
         
+        print(f"Loaded {len(data)} entries from index")
         if main_window and hasattr(main_window, 'statusBar'):
-            main_window.statusBar().showMessage(f"Loaded {len(data)} entries from {path}", 3000)
+            main_window.statusBar().showMessage(f"Loaded {len(data)} entries from {file_path}", 3000)
     except Exception as e:
+        print(f"Error loading index: {str(e)}")
+        traceback.print_exc()
         if main_window and hasattr(main_window, 'statusBar'):
             main_window.statusBar().showMessage(f"Error loading index: {str(e)}", 3000)
-        print(f"Error loading index: {e}")
     
     return data
 
@@ -125,6 +184,10 @@ def load_index(main_window=None, directory=None):
 def backup_index(directory=None):
     """
     Backup current.index to index_backups/current.index.0001, .0002, etc.
+    Only used for automatic backups after indexing sources.
+    
+    Args:
+        directory: Directory containing the index file (default: app root)
     """
     # Get the app's root directory if directory is not specified
     if directory is None:

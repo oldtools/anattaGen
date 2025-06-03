@@ -1,9 +1,5 @@
 Python/configparser.ConfigParser
-Python/__pycache__/
-Python/ui/__pycache__/
-Python/ui/creation/__pycache__/
-Python/ui/widgets/__pycache__/
-.vscode/
+.vscode
 Python/main_test.py
 Python/steam.json
 Python/steam_filtered.txt
@@ -17,10 +13,15 @@ index_backups
 .gitignore
 *.ini
 *.bak
+*.ahk
 *.old
 *.del
 *.index
 *.log
 *.json
+*.pyc
 steam_filtered.txt
 GitDeploy.*
+*/__pycache__
+remove_debug_prints.py
+*.code-workspace

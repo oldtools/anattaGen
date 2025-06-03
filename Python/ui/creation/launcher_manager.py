@@ -49,10 +49,10 @@ exit
         try:
             with open(self.launcher_template_path, 'w', encoding='utf-8') as f:
                 f.write(basic_template)
-            print(f"Created launcher template at {self.launcher_template_path}")
+
             return True
         except Exception as e:
-            print(f"Error creating launcher template: {e}")
+
             return False
     
     def create_or_update_launcher(self, game_data):
@@ -60,13 +60,13 @@ exit
         # Get the launchers directory from the UI
         launchers_dir = self.main_window.launchers_dir_edit.text()
         if not launchers_dir or not os.path.isdir(launchers_dir):
-            print(f"Invalid launchers directory: {launchers_dir}")
+
             return None
         
         # Get the game name from name_override
         game_name = game_data['name_override']
         if not game_name:
-            print(f"Game name not found for {game_data['executable']}")
+
             return None
         
         # Create the launcher path
@@ -78,7 +78,7 @@ exit
         # Create the launcher content
         launcher_content = self._create_launcher_content(game_data)
         if not launcher_content:
-            print(f"Failed to create launcher content for {game_name}")
+
             return None
         
         # Write the launcher file
@@ -89,7 +89,7 @@ exit
             # Return 'created' or 'updated' based on whether the file existed before
             return 'updated' if launcher_exists else 'created'
         except Exception as e:
-            print(f"Error writing launcher file: {e}")
+
             return None
     
     def _create_launcher_content(self, game_data):
@@ -119,7 +119,7 @@ exit
             
             return content
         except Exception as e:
-            print(f"Error creating launcher content: {e}")
+
             return None
 
 

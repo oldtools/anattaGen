@@ -1,2 +1,7 @@
 PyQt6
-nltk 
+nltk
+winshell
+pywin32
+requests
+beautifulsoup4
+configparser

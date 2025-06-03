@@ -87,7 +87,6 @@ anattaGen
 			│   ├──  repos.set
 			│   │
 			│   └──  ui
-			│        ├──  accordion.py
 			│        ├──  config_manager.py
 			│        ├──  deployment_tab_ui.py
 			│        ├──  editor_tab_ui.py
@@ -100,15 +99,10 @@ anattaGen
 			│        ├──  steam_integration.py
 			│        ├──  steam_processor.py
 			│        ├──  steam_utils.py
-			│        ├──  title_identifier.py
 			│        ├──  ui_widgets.py
 			│        ├──  widgets.py
-			│        ├──  widgets
-			│        │   ├──  __init__.py
-			│        │   └──   drag_drop_list.py
 			│        │
 			│        └──  creation
-			│            ├──  __init__.py
 			│            ├──  config_writer.py
 			│            ├──  creation_controller.py
 			│            ├──  file_propagator.py

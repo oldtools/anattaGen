@@ -69,12 +69,12 @@ def normalize_name_for_matching(name, stemmer=None):
     # Special handling for short titles (4 chars or less)
     # These are often acronyms or unique names that should be preserved as-is
     if len(name) <= 4:
-        print(f"Preserving short title as-is (lowercase): '{name}' -> '{result}'")
+
         return result
     
     # Special handling for all-uppercase titles (likely acronyms)
     if name.isupper() and len(name) <= 10:
-        print(f"Preserving uppercase title as-is (lowercase): '{name}' -> '{result}'")
+
         return result
     
     # Remove non-alphanumeric characters
@@ -99,7 +99,7 @@ def normalize_name_for_matching(name, stemmer=None):
         result = ' '.join(stemmed_words)
     
     if original.lower() != result:
-        print(f"Normalized: '{original}' -> '{result}'")
+        pass
     
     return result
 

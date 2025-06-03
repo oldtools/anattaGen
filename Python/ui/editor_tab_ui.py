@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
-    QHeaderView, QMenu, QWidget, QListWidget, QListWidgetItem
+    QHeaderView, QMenu, QWidget, QListWidget, QListWidgetItem, QCheckBox
 )
 from PyQt6.QtCore import Qt, QSize
 
@@ -34,23 +34,16 @@ def create_editor_tab_item_status_widget(parent, initial_text="", row=-1, col=-1
 
 def populate_editor_tab(main_window):
     """Populate the editor tab with all required UI elements"""
-    # Create the editor tab if it doesn't exist
-    if not hasattr(main_window, 'editor_tab') or main_window.editor_tab is None:
-        main_window.editor_tab = QWidget()
-        
-        # Add the editor tab to the tab widget if it doesn't exist
-        tab_exists = False
-        for i in range(main_window.tabs.count()):
-            if main_window.tabs.tabText(i) == "Editor":
-                tab_exists = True
-                main_window.tabs.setCurrentIndex(i)
-                break
-        
-        if not tab_exists:
-            main_window.tabs.addTab(main_window.editor_tab, "Editor")
-    
-    # Create main layout for the editor tab
-    main_window.editor_tab_layout = QVBoxLayout(main_window.editor_tab)
+    # Check if the tab already has a layout
+    if main_window.editor_tab.layout() is None:
+        main_window.editor_tab_layout = QVBoxLayout(main_window.editor_tab)
+    else:
+        # Clear existing layout if it exists
+        while main_window.editor_tab.layout().count():
+            item = main_window.editor_tab.layout().takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        main_window.editor_tab_layout = main_window.editor_tab.layout()
     
     # Create button layout
     button_layout = QHBoxLayout()
@@ -58,17 +51,17 @@ def populate_editor_tab(main_window):
     # Create index management button with dropdown menu
     main_window.index_button = QPushButton("Index")
     index_menu = QMenu(main_window.index_button)
-    
+
     # Add actions to the menu
     load_action = index_menu.addAction("Load Index")
     load_action.triggered.connect(main_window._load_index)
-    
+
     save_action = index_menu.addAction("Save Index")
     save_action.triggered.connect(main_window._save_editor_table_to_index)
-    
+
     delete_action = index_menu.addAction("Delete Indexes")
     delete_action.triggered.connect(main_window._on_delete_indexes)
-    
+
     main_window.index_button.setMenu(index_menu)
     button_layout.addWidget(main_window.index_button)
     
@@ -120,3 +113,31 @@ def populate_editor_tab(main_window):
     
     # Print debug info
     print("Editor tab populated successfully")
+
+    # Connect editor table signals
+    main_window.editor_table.itemChanged.connect(main_window._on_editor_table_edited)
+
+    # Also connect checkbox state changes
+    def connect_checkbox_changes(table):
+        """Connect checkbox state changes to the edited handler"""
+        for row in range(table.rowCount()):
+            for col in [0, 22, 23]:  # Include, AsAdmin, NoTB columns
+                widget = table.cellWidget(row, col)
+                if widget:
+                    checkbox = widget.findChild(QCheckBox)
+                    if checkbox:
+                        # Get the main window reference
+                        main_window = table.parent()
+                        while main_window and not hasattr(main_window, '_on_editor_table_edited'):
+                            main_window = main_window.parent()
+                        
+                        if main_window and hasattr(main_window, '_on_editor_table_edited'):
+                            checkbox.stateChanged.connect(
+                                lambda state, mw=main_window: mw._on_editor_table_edited(None))
+
+    # Call this function whenever rows are added to the table
+    connect_checkbox_changes(main_window.editor_table)
+
+    # Connect to rowsInserted signal to handle new rows
+    main_window.editor_table.model().rowsInserted.connect(
+        lambda parent, first, last, mw=main_window: connect_checkbox_changes(mw.editor_table))

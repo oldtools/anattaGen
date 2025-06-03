@@ -63,13 +63,13 @@ class SteamProcessor:
                         # Check for the nested 'app' key
                         if isinstance(data['applist']['apps'], dict) and 'app' in data['applist']['apps']:
                             apps_list = data['applist']['apps']['app']
-                            print(f"Found nested 'applist.apps.app' format with {len(apps_list)} apps")
+
                         else:
                             apps_list = data['applist']['apps']
-                            print(f"Found standard 'applist.apps' format with {len(apps_list)} apps")
+
                     elif 'response' in data and 'apps' in data['response']:
                         apps_list = data['response']['apps']
-                        print(f"Found 'response.apps' format with {len(apps_list)} apps")
+
                     else:
                         # Assume it's a direct mapping of app_id to app data
                         print("Assuming direct app_id to app_data mapping")
@@ -82,11 +82,11 @@ class SteamProcessor:
                                 })
                             elif isinstance(data, list):
                                 # Direct list of apps
-                                print(f"Found direct list of {len(data)} apps")
+
                                 apps_list = data
             
             # Process the apps list
-            print(f"Processing {len(apps_list)} apps")
+
             
             # Define exclusion terms and patterns
             exclusion_terms = [
@@ -128,7 +128,7 @@ class SteamProcessor:
             
             for app in apps_list:
                 if not isinstance(app, dict):
-                    print(f"Skipping app - Not a dictionary: {app}")
+
                     continue
                     
                 app_id = app.get('appid')
@@ -136,7 +136,7 @@ class SteamProcessor:
                 
                 # Skip if missing required fields or empty name
                 if not app_id or not app_name or not app_name.strip():
-                    print(f"Skipping app '{app_name}' (ID: {app_id}) - Missing ID/Name or empty name.")
+
                     continue
                 
                 # Convert app_id to string
@@ -144,18 +144,18 @@ class SteamProcessor:
                 
                 # Skip duplicates by app_id
                 if app_id in seen_app_ids:
-                    print(f"Skipping duplicate app ID: {app_id} - '{app_name}'")
+
                     continue
                 
                 # Check for duplicate names (case insensitive)
                 app_name_lower = app_name.lower()
                 if app_name_lower in seen_app_names:
                     existing_id = seen_app_names[app_name_lower]
-                    print(f"Found duplicate name: '{app_name}' - IDs: {existing_id} and {app_id}")
+
                     # Keep the one with the lower app_id (usually the original/main game)
                     if int(app_id) < int(existing_id):
                         # Replace the existing entry
-                        print(f"Keeping app ID {app_id} for '{app_name}' (lower ID)")
+
                         # Remove the old entry from filtered_apps
                         filtered_apps = [app for app in filtered_apps if app[0] != existing_id]
                         # Update the seen_app_ids and seen_app_names
@@ -163,35 +163,35 @@ class SteamProcessor:
                         seen_app_names[app_name_lower] = app_id
                     else:
                         # Skip this entry
-                        print(f"Keeping existing app ID {existing_id} for '{app_name}' (lower ID)")
+
                         continue
                 
                 # Skip non-games if type is specified
                 app_type = app.get('type', '').lower()
                 if app_type and app_type not in ('game', 'dlc', 'application'):
-                    print(f"Skipping app '{app_name}' (ID: {app_id}) - Type '{app_type}' is not game/dlc/application.")
+
                     continue
                     
                 # Skip very short names or names with just common words
                 if len(app_name) < 4:
-                    print(f"Skipping app '{app_name}' (ID: {app_id}) - Name too short (length {len(app_name)}).")
+
                     continue
-                
+
                 # Skip if name contains exclusion terms
                 if any(term in app_name_lower for term in exclusion_terms):
-                    print(f"Skipping app '{app_name}' (ID: {app_id}) - Contains exclusion term.")
+
                     continue
                     
                 # Skip if name matches regex exclusion patterns
                 if any(rx.search(app_name) for rx in compiled_regex_exclusions):
-                    print(f"Skipping app '{app_name}' (ID: {app_id}) - Matches regex exclusion pattern.")
+
                     continue
                     
                 # Skip names that are just common words
                 common_words = ["game", "the", "of", "and", "a", "an", "in", "on", "to", "for", "with", "by", "about"]
                 words = app_name.lower().split()
                 if all(word in common_words for word in words):
-                    print(f"Skipping app with only common words: {app_name} (ID: {app_id})")
+
                     continue
                 
                 # Add to tracking sets
@@ -204,7 +204,7 @@ class SteamProcessor:
                 # Add to cache
                 self.main_window.steam_title_cache[app_id] = app_name
             
-            print(f"Filtered to {len(filtered_apps)} unique game apps (removed {len(apps_list) - len(filtered_apps)} entries)")
+
             
             # Get the app's root directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -212,20 +212,20 @@ class SteamProcessor:
             
             # Save filtered data to a text file in the app root directory
             cache_file_path = os.path.join(app_root_dir, STEAM_FILTERED_TXT)
-            print(f"Saving filtered Steam data to app root: {cache_file_path}")
+
             with open(cache_file_path, 'w', encoding='utf-8') as f:
                 for app_id, app_name in filtered_apps:
                     # Use tab as separator (less likely to appear in game names than pipe)
                     f.write(f"{app_id}\t{app_name}\n")
             
             if os.path.exists(cache_file_path) and os.path.getsize(cache_file_path) > 0:
-                print(f"Successfully saved filtered Steam data to {cache_file_path} (size: {os.path.getsize(cache_file_path)} bytes)")
+
             else:
-                print(f"Warning: Filtered Steam data file {cache_file_path} is empty or not created.")
+
 
             # Store the cache file path - make sure it's the .txt file
             self.main_window.filtered_steam_cache_file_path = cache_file_path
-            print(f"Set filtered_steam_cache_file_path to: {cache_file_path}")
+
             
             # Create normalized index for better matching
             self.steam_cache_manager.create_normalized_steam_index()
@@ -234,7 +234,7 @@ class SteamProcessor:
             
         except Exception as e:
             import traceback
-            print(f"Error processing Steam JSON: {e}")
+
             traceback.print_exc()
             self.main_window.statusBar().showMessage(f"Error processing Steam JSON: {str(e)}", 5000)
             return False
@@ -295,9 +295,9 @@ class SteamProcessor:
                 
                 # Create backup
                 shutil.copy2(filtered_cache_path, backup_path)
-                print(f"Backed up {STEAM_FILTERED_TXT} to {backup_path}")
+
             except Exception as e:
-                print(f"Error backing up {STEAM_FILTERED_TXT}: {e}")
+                pass
         
         # Backup normalized index if it exists
         if os.path.exists(normalized_index_path):
@@ -309,6 +309,6 @@ class SteamProcessor:
                 
                 # Create backup
                 shutil.copy2(normalized_index_path, backup_path)
-                print(f"Backed up {NORMALIZED_INDEX_CACHE} to {backup_path}")
+
             except Exception as e:
-                print(f"Error backing up {NORMALIZED_INDEX_CACHE}: {e}")
+

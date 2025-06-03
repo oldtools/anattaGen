@@ -16,12 +16,12 @@ def parse_ini_file(file_path: str) -> configparser.ConfigParser | None:
     config.optionxform = str  # Preserve key case
     try:
         if not config.read(file_path, encoding='utf-8'):
-            print(f"Error: Could not read or parse {file_path} in parse_ini_file")
+
             return None
-        print(f"Successfully parsed {file_path}. Sections: {config.sections()}")
+
         return config
     except Exception as e:
-        print(f"Exception during parsing {file_path}: {e}")
+
         return None
 
 def gather_current_configuration(main_window) -> configparser.ConfigParser:
@@ -54,12 +54,12 @@ def gather_current_configuration(main_window) -> configparser.ConfigParser:
     # --- Save CEN/LC options ---
     # Check if deployment_path_options exists
     if hasattr(main_window, 'deployment_path_options'):
-        print(f"Found {len(main_window.deployment_path_options)} deployment path options")
+
         for path_key, radio_group in main_window.deployment_path_options.items():
             checked_button = radio_group.checkedButton()
             if checked_button:
                 mode = checked_button.text()
-                print(f"Saving {path_key}_mode = {mode}")
+
                 config["Deployment Options"][f"{path_key}_mode"] = mode
 
     # --- Element Locations ---
@@ -197,10 +197,10 @@ def save_configuration(main_window, config_file=None):
         with open(config_path, 'w', encoding='utf-8') as f:
             config.write(f)
         
-        print(f"Configuration saved to {config_path}")
+
         return True
     except Exception as e:
-        print(f"Error saving configuration: {e}")
+
         return False
 
 def load_sequence_options(main_window, config):
@@ -231,7 +231,7 @@ def load_configuration(main_window, config_path=None):
             config_path = os.path.join(app_root_dir, "config.ini")
         
         if not os.path.exists(config_path):
-            print(f"Configuration file not found: {config_path}")
+
             return False
         
         config = configparser.ConfigParser()
@@ -255,7 +255,7 @@ def load_configuration(main_window, config_path=None):
                 items = items_str.split('|')
                 combo.addItems(items)
         
-        print(f"Loading configuration from {config_path}")
+
         
         # --- Current Settings ---
         if "Current Settings" in config:
@@ -366,7 +366,7 @@ def load_configuration(main_window, config_path=None):
         
         return True
     except Exception as e:
-        print(f"Error loading configuration: {e}")
+
         import traceback
         traceback.print_exc()
         return False
@@ -428,7 +428,7 @@ def connect_dynamic_config_saving(main_window):
         try:
             checkbox.toggled.connect(lambda checked, mw=main_window: save_configuration(mw))
         except RuntimeError as e:
-            print(f"Error connecting checkbox: {e}")
+            pass
     
     # Connect radio buttons for CEN/LC options
     if hasattr(main_window, 'deployment_path_options'):
@@ -440,7 +440,7 @@ def connect_dynamic_config_saving(main_window):
                         if button is not None:
                             button.toggled.connect(lambda checked, mw=main_window: save_configuration(mw))
             except RuntimeError as e:
-                print(f"Error connecting radio button group for {path_key}: {e}")
+
                 continue
     
     # Connect line edits
@@ -482,7 +482,7 @@ def connect_dynamic_config_saving(main_window):
         try:
             line_edit.textChanged.connect(lambda text, mw=main_window: save_configuration(mw))
         except RuntimeError as e:
-            print(f"Error connecting line edit: {e}")
+            pass
     
     # Connect combo boxes
     combo_boxes = []
@@ -500,7 +500,7 @@ def connect_dynamic_config_saving(main_window):
         try:
             combo_box.currentTextChanged.connect(lambda text, mw=main_window: save_configuration(mw))
         except RuntimeError as e:
-            print(f"Error connecting combo box: {e}")
+            pass
     
     # Connect sequence lists
     if hasattr(main_window, 'launch_sequence_list') and main_window.launch_sequence_list is not None:
@@ -512,7 +512,7 @@ def connect_dynamic_config_saving(main_window):
             main_window.launch_sequence_list.model().rowsMoved.connect(
                 lambda parent, start, end, destination, row, mw=main_window: save_configuration(mw))
         except (RuntimeError, AttributeError) as e:
-            print(f"Error connecting launch sequence list: {e}")
+            pass
     
     if hasattr(main_window, 'exit_sequence_list') and main_window.exit_sequence_list is not None:
         try:
@@ -523,73 +523,28 @@ def connect_dynamic_config_saving(main_window):
             main_window.exit_sequence_list.model().rowsMoved.connect(
                 lambda parent, start, end, destination, row, mw=main_window: save_configuration(mw))
         except (RuntimeError, AttributeError) as e:
-            print(f"Error connecting exit sequence list: {e}")
+            pass
     
     print("Dynamic config saving connected successfully")
 
 def load_initial_config(main_window):
-    """Load the initial configuration from config.ini"""
-    # Try to find config.ini in the current directory first
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    app_root_dir = os.path.dirname(os.path.dirname(script_dir))
-    
-    current_dir_config = "config.ini"
-    parent_dir_config = os.path.join(app_root_dir, "config.ini")
-    ui_dir_config = os.path.join(script_dir, "config.ini")
-    
-    config_file_path = None
-    if os.path.exists(current_dir_config):
-        config_file_path = current_dir_config
-    elif os.path.exists(parent_dir_config):
-        config_file_path = parent_dir_config
-    elif os.path.exists(ui_dir_config):
-        config_file_path = ui_dir_config
-    
-    if config_file_path:
-        print(f"Loading configuration from {config_file_path}")
-        try:
-            # Check if the file is valid
-            config = configparser.ConfigParser()
-            config.read(config_file_path, encoding='utf-8')
-            
-            # Validate the config file
-            if "Current Settings" not in config:
-                print("Invalid config file: Missing 'Current Settings' section")
-                # Create a backup of the corrupted file
-                backup_file = f"{config_file_path}.bak"
-                try:
-                    import shutil
-                    shutil.copy2(config_file_path, backup_file)
-                    print(f"Corrupted config file backed up to {backup_file}")
-                except Exception as e:
-                    print(f"Error backing up corrupted config file: {e}")
-                
-                # Load default settings from config.set
-                load_default_config(main_window)
-            else:
-                # Load the configuration
-                load_configuration(main_window)
-        except Exception as e:
-            print(f"Error reading config file: {e}")
-            # Create a backup of the corrupted file
-            backup_file = f"{config_file_path}.bak"
-            try:
-                import shutil
-                shutil.copy2(config_file_path, backup_file)
-                print(f"Corrupted config file backed up to {backup_file}")
-            except Exception as e:
-                print(f"Error backing up corrupted config file: {e}")
-            
-            # Load default settings from config.set
-            load_default_config(main_window)
-    else:
-        # If no config.ini found, load default settings from config.set
-        print("No config.ini found. Loading default settings from config.set.")
-        load_default_config(main_window)
-    
-    # Connect dynamic config saving after loading
-    connect_dynamic_config_saving(main_window)
-    return True
+    """Load the initial configuration when the application starts"""
+    try:
+        # Get the app's root directory
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        app_root_dir = os.path.dirname(os.path.dirname(script_dir))
+        
+        # Define the config file path
+        config_file = os.path.join(app_root_dir, 'config.ini')
+        
+        # Load the configuration
+        load_configuration(main_window, config_file)
+        
+        # Add a debug print to confirm this function is being called
+        print(f"Initial configuration loaded from {config_file}")
+        
+    except Exception as e:
+        print(f"Error loading initial configuration: {str(e)}")
 
 def load_default_config(main_window):
     """Load default configuration from config.set"""
@@ -598,7 +553,7 @@ def load_default_config(main_window):
     config_set_path = os.path.join(app_root_dir, "Python", "config.set")
     
     if not os.path.exists(config_set_path):
-        print(f"Default config file not found: {config_set_path}")
+
         return False
     
     try:
@@ -617,10 +572,10 @@ def load_default_config(main_window):
         config_file = os.path.join(app_root_dir, "config.ini")
         save_configuration(main_window, config_file)
         
-        print(f"Default configuration loaded from {config_set_path} and saved to {config_file}")
+
         return True
     except Exception as e:
-        print(f"Error loading default configuration: {e}")
+
         import traceback
         traceback.print_exc()
         return False
@@ -641,106 +596,51 @@ def initialize_repos_config(config_file=None):
     app_directory = main_config.get("Current Settings", "app_directory", fallback=app_root_dir)
     
     # Load repos.set
-    repos_set_path = os.path.join(app_directory, "Python", "repos.set")
+    repos_set_path = os.path.join(app_directory, "repos.set")
     if not os.path.exists(repos_set_path):
-        print(f"repos.set not found at {repos_set_path}")
-        return False
+        # Try the Python subdirectory
+        repos_set_path = os.path.join(app_directory, "Python", "repos.set")
+        if not os.path.exists(repos_set_path):
+            print(f"repos.set not found at {repos_set_path}")
+            return False
     
-    # Get SOURCEHOST and EXTRACTLOC from repos.set
-    try:
-        # Read repos.set file
-        with open(repos_set_path, 'r', encoding='utf-8') as f:
-            repos_set_content = f.read()
-        
-        # Extract SOURCEHOST and EXTRACTLOC values
-        sourcehost = ""
-        extractloc = ""
-        
-        for line in repos_set_content.splitlines():
-            if line.strip().startswith("SOURCEHOST="):
-                sourcehost = line.strip().split("=", 1)[1].strip()
-            elif line.strip().startswith("EXTRACTLOC="):
-                extractloc = line.strip().split("=", 1)[1].strip()
-        
-        # Replace $app_directory in EXTRACTLOC
-        extractloc = extractloc.replace("$app_directory", app_directory)
-        
-        # Parse BINARIES section
-        binaries_section = ""
-        in_binaries_section = False
-        for line in repos_set_content.splitlines():
-            if line.strip() == "[BINARIES]":
-                in_binaries_section = True
-                continue
-            elif line.strip().startswith("[") and line.strip().endswith("]"):
-                in_binaries_section = False
-            
-            if in_binaries_section and "=" in line:
-                binaries_section += line + "\n"
-        
-        # Parse GLOBAL section
-        global_section = ""
-        in_global_section = False
-        for line in repos_set_content.splitlines():
-            if line.strip() == "[GLOBAL]":
-                in_global_section = True
-                continue
-            elif line.strip().startswith("[") and line.strip().endswith("]"):
-                in_global_section = False
-            
-            if in_global_section:
-                global_section += line + "\n"
-        
-        # Create repos.ini
-        repos_ini_path = os.path.join(app_directory, "repos.ini")
-        
-        # Delete existing repos.ini if it exists
-        if os.path.exists(repos_ini_path):
-            os.remove(repos_ini_path)
-        
-        # Process BINARIES section and write to repos.ini
-        with open(repos_ini_path, 'w', encoding='utf-8') as f:
-            f.write("[Current Settings]\n")
-            
-            for line in binaries_section.splitlines():
-                if not line.strip() or "=" not in line:
-                    continue
-                
-                item_name, item_value = line.split("=", 1)
-                item_name = item_name.strip()
-                item_value = item_value.strip()
-                
-                # Skip empty values
-                if not item_value:
-                    continue
-                
-                # Replace variables
-                item_value = item_value.replace("$ITEMNAME", item_name)
-                extract_value = extractloc.replace("$ITEMNAME", item_name)
-                item_value = item_value.replace("$EXTRACTLOC", extract_value)
-                item_value = item_value.replace("$SOURCEHOST", sourcehost)
-                
-                # Write to repos.ini
-                f.write(f"{item_name}={item_value}\n")
-            
-            # Add GLOBAL section
-            f.write("\n[GLOBAL]\n")
-            for line in global_section.splitlines():
-                if not line.strip():
-                    continue
-                
-                # Replace variables in GLOBAL section
-                line = line.replace("$app_directory", app_directory)
-                line = line.replace("$SOURCEHOST", sourcehost)
-                
-                f.write(f"{line}\n")
-        
-        print(f"Initialized repos.ini at {repos_ini_path}")
-        return True
+    # Read repos.set content
+    with open(repos_set_path, 'r', encoding='utf-8') as f:
+        repos_set_content = f.read()
     
-    except Exception as e:
-        print(f"Error initializing repos.ini: {e}")
-        return False
+    # Parse GLOBAL section
+    global_section = ""
+    in_global_section = False
+    for line in repos_set_content.splitlines():
+        if line.strip() == "[GLOBAL]":
+            in_global_section = True
+            continue
+        elif line.strip().startswith("[") and line.strip().endswith("]"):
+            in_global_section = False
+        
+        if in_global_section:
+            global_section += line + "\n"
+    
+    # Create repos.ini
+    repos_ini_path = os.path.join(app_directory, "repos.ini")
+    
+    # Check if repos.ini already exists and has content
+    if os.path.exists(repos_ini_path):
+        with open(repos_ini_path, 'r', encoding='utf-8') as f:
+            existing_content = f.read().strip()
+        
+        # If it has content, don't overwrite it
+        if existing_content:
+            print(f"repos.ini already exists with content, not overwriting")
+            return True
+    
+    # Write to repos.ini
+    with open(repos_ini_path, 'w', encoding='utf-8') as f:
+        f.write("[Current Settings]\n")
+        f.write(global_section)
+    
+    print(f"Created repos.ini at {repos_ini_path}")
+    return True
 
 def validate_and_repair_config(main_window):
     """Validate the config.ini file and repair it if necessary"""
@@ -751,7 +651,7 @@ def validate_and_repair_config(main_window):
     
     # Check if config.ini exists
     if not os.path.exists(config_file):
-        print(f"Config file not found: {config_file}")
+
         # Create a new config file
         save_configuration(main_window, config_file)
         return
@@ -763,15 +663,15 @@ def validate_and_repair_config(main_window):
     try:
         config.read(config_file, encoding='utf-8')
     except Exception as e:
-        print(f"Error reading config file: {e}")
+
         # Backup the corrupted file
         backup_file = f"{config_file}.bak"
         try:
             import shutil
             shutil.copy2(config_file, backup_file)
-            print(f"Corrupted config file backed up to {backup_file}")
+
         except Exception as e:
-            print(f"Error backing up corrupted config file: {e}")
+            pass
         
         # Create a new config file
         save_configuration(main_window, config_file)
@@ -780,10 +680,10 @@ def validate_and_repair_config(main_window):
     # Check if required sections exist
     required_sections = ["Current Settings", "Element Locations", "App Locations", "Deployment Options"]
     missing_sections = [section for section in required_sections if section not in config]
-    
+
     # If any required sections are missing, repair the config file
     if missing_sections:
-        print(f"Missing sections in config file: {missing_sections}")
+
         # Create a new config file
         save_configuration(main_window, config_file)
         return
@@ -801,7 +701,7 @@ def validate_and_repair_config(main_window):
         if section in config:
             missing_keys = [key for key in keys if key not in config[section]]
             if missing_keys:
-                print(f"Missing keys in {section}: {missing_keys}")
+
                 # Update the config file
                 save_configuration(main_window, config_file)
                 return
@@ -816,7 +716,7 @@ def validate_and_repair_config(main_window):
         if section in config:
             for key in keys:
                 if key in config[section] and not config[section][key]:
-                    print(f"Empty value for critical key {section}.{key}")
+
                     # Update the config file
                     save_configuration(main_window, config_file)
                     return
@@ -847,10 +747,10 @@ def save_launch_exit_sequences(main_window, launch_sequence, exit_sequence):
         with open(config_path, 'w', encoding='utf-8') as f:
             config.write(f)
         
-        print(f"Saved launch and exit sequences to {config_path}")
+
         return True
     except Exception as e:
-        print(f"Error saving launch and exit sequences: {e}")
+
         return False
 
 def get_launch_exit_sequences(main_window):
@@ -862,7 +762,7 @@ def get_launch_exit_sequences(main_window):
         config_path = os.path.join(app_root_dir, "config.ini")
         
         if not os.path.exists(config_path):
-            print(f"Configuration file not found: {config_path}")
+
             return None, None
         
         config = configparser.ConfigParser()
@@ -886,7 +786,7 @@ def get_launch_exit_sequences(main_window):
         
         return launch_sequence, exit_sequence
     except Exception as e:
-        print(f"Error getting launch and exit sequences: {e}")
+
         return None, None
 
 def apply_loaded_configuration(main_window, config):
@@ -1009,7 +909,7 @@ def apply_loaded_configuration(main_window, config):
         
         return True
     except Exception as e:
-        print(f"Error loading configuration: {e}")
+
         import traceback
         traceback.print_exc()
         return False

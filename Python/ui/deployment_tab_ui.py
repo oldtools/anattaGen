@@ -7,21 +7,20 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from .ui_widgets import create_deployment_path_row_widget
 from .widgets import DragDropListWidget
+from .accordion import AccordionSection  # Add this import
 
 def populate_deployment_tab(main_window):
     """Populate the deployment tab with UI elements"""
-    from PyQt6.QtWidgets import (
-        QLabel, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit, 
-        QPushButton, QFileDialog, QWidget, QGroupBox, QCheckBox,
-        QSplitter, QButtonGroup, QRadioButton, QMenu, QTableWidget
-    )
-    from PyQt6.QtCore import Qt
-    from .ui_widgets import create_deployment_path_row_widget
-    from .widgets import DragDropListWidget
-    from .accordion import AccordionSection
-    
-    # Create the deployment tab layout
-    main_window.deployment_tab_layout = QVBoxLayout(main_window.deployment_tab)
+    # Check if the tab already has a layout
+    if main_window.deployment_tab.layout() is None:
+        main_window.deployment_tab_layout = QVBoxLayout(main_window.deployment_tab)
+    else:
+        # Clear existing layout if it exists
+        while main_window.deployment_tab.layout().count():
+            item = main_window.deployment_tab.layout().takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        main_window.deployment_tab_layout = main_window.deployment_tab.layout()
     
     # Create a main layout for the deployment tab content
     main_layout = QVBoxLayout()
@@ -62,6 +61,9 @@ def populate_deployment_tab(main_window):
     main_window.hide_taskbar_checkbox = QCheckBox("Hide Taskbar")
     main_window.hide_taskbar_checkbox.setToolTip("If checked, the launcher will hide the taskbar when the game launches.")
     
+    main_window.run_as_admin_checkbox = QCheckBox("Run As Admin")
+    main_window.run_as_admin_checkbox.setToolTip("If checked, the launcher will run the game with administrator privileges.")
+    
     main_window.enable_launcher_checkbox = QCheckBox("Enable Launcher")
     main_window.enable_launcher_checkbox.setToolTip("If checked, the launcher will be enabled.")
     
@@ -84,6 +86,7 @@ def populate_deployment_tab(main_window):
     
     column2_layout = QVBoxLayout()
     column2_layout.addWidget(main_window.hide_taskbar_checkbox)
+    column2_layout.addWidget(main_window.run_as_admin_checkbox)  # Add Run As Admin checkbox
     column2_layout.addWidget(main_window.enable_launcher_checkbox)
     column2_layout.addWidget(main_window.apply_mapper_profiles_checkbox)
     column2_layout.addStretch(1)
@@ -161,7 +164,7 @@ def populate_deployment_tab(main_window):
                 # Add the row to the form layout
                 path_config_layout.addRow(label_text, path_row_container_widget)
             except Exception as e:
-                print(f"Error creating path row for {label_text}: {e}")
+                pass
     
     # --- Section 3: Sequences and Creation Options ---
     sequences_widget = QWidget()
@@ -256,7 +259,7 @@ def populate_deployment_tab(main_window):
     
     # Add Create button
     create_button = QPushButton("Create Selected")
-    create_button.clicked.connect(main_window._on_create_button_clicked)
+    create_button.clicked.connect(main_window.on_create_button_clicked)  # Remove the underscore
     create_button.setStyleSheet("QPushButton { font-weight: bold; background-color: #4CAF50; color: white; padding: 8px; }")
     creation_options_layout.addWidget(create_button)
     
@@ -283,6 +286,7 @@ def populate_deployment_tab(main_window):
     main_window.net_check_checkbox.setObjectName("net_check_checkbox")
     main_window.name_check_checkbox.setObjectName("name_check_checkbox")
     main_window.hide_taskbar_checkbox.setObjectName("hide_taskbar_checkbox")
+    main_window.run_as_admin_checkbox.setObjectName("run_as_admin_checkbox")
     main_window.enable_launcher_checkbox.setObjectName("enable_launcher_checkbox")
     main_window.apply_mapper_profiles_checkbox.setObjectName("apply_mapper_profiles_checkbox")
     main_window.enable_borderless_windowing_checkbox.setObjectName("enable_borderless_windowing_checkbox")
@@ -333,14 +337,17 @@ def reset_exit_sequence(main_window):
 def print_deployment_options(main_window):
     """Print the deployment_path_options for debugging"""
     if hasattr(main_window, 'deployment_path_options'):
-        print(f"Found {len(main_window.deployment_path_options)} deployment path options:")
+        # Add a pass statement for empty blocks
+        pass
         for path_key, radio_group in main_window.deployment_path_options.items():
             checked_button = radio_group.checkedButton()
             if checked_button:
                 mode = checked_button.text()
-                print(f"  {path_key}_mode = {mode}")
+                # Add a pass statement for empty blocks
+                pass
             else:
-                print(f"  {path_key} has no checked button")
+                # Add a pass statement for empty blocks
+                pass
     else:
         print("No deployment_path_options found on main_window")
 
@@ -397,7 +404,7 @@ def create_deployment_path_row_widget(parent_window, setup_qlineedit_to_mirror: 
     
     # Store the radio group in the parent_window for later access
     parent_window.deployment_path_options[key] = radio_group
-    print(f"Added deployment path option: {key}")
+
     
     # Connect radio buttons to save config when changed
     from Python.ui.config_manager import save_configuration

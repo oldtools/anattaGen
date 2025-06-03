@@ -22,8 +22,16 @@ def populate_setup_tab(main_window: QWidget):
     from .ui_widgets import create_path_selection_widget, create_app_selection_with_flyout_widget, create_app_selection_with_run_wait_widget, create_list_management_widget
     from .accordion import AccordionSection
     
-    # Create the setup tab layout
-    main_window.setup_tab_layout = QVBoxLayout(main_window.setup_tab)
+    # Check if the tab already has a layout
+    if main_window.setup_tab.layout() is None:
+        main_window.setup_tab_layout = QVBoxLayout(main_window.setup_tab)
+    else:
+        # Clear existing layout if it exists
+        while main_window.setup_tab.layout().count():
+            item = main_window.setup_tab.layout().takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        main_window.setup_tab_layout = main_window.setup_tab.layout()
     
     # Create a main layout for the setup tab
     main_layout = QVBoxLayout()

@@ -31,21 +31,21 @@ class JoystickProfileManager:
                     config.read(config_path, encoding='utf-8')
                     profiles_dir = config.get("Element Locations", "profiles_directory", fallback=None)
                     if profiles_dir and os.path.isdir(profiles_dir):
-                        print(f"Using profiles directory from config: {profiles_dir}")
+
                         # Set it in the UI if possible
                         if hasattr(self.main_window, 'profiles_dir_edit'):
                             self.main_window.profiles_dir_edit.setText(profiles_dir)
             except Exception as e:
-                print(f"Error getting profiles directory from config: {e}")
+                pass
         
         if not profiles_dir or not os.path.isdir(profiles_dir):
-            print(f"Profiles directory not found or invalid: '{profiles_dir}'")
+
             return {'created': 0, 'updated': 0}
         
         # Get the game name from name_override
         game_name = game_data['name_override']
         if not game_name:
-            print(f"Game name not found for {game_data['executable']}")
+
             return {'created': 0, 'updated': 0}
         
         # Create the profile folder path
@@ -53,7 +53,7 @@ class JoystickProfileManager:
         
         # Check if the profile folder exists
         if not os.path.exists(profile_folder_path) and not create_profile_folders:
-            print(f"Profile folder does not exist and create_profile_folders is False: {profile_folder_path}")
+
             return {'created': 0, 'updated': 0}
         
         # Make sure the profile folder exists
@@ -74,7 +74,7 @@ class JoystickProfileManager:
             try:
                 config.read(config_file_path, encoding='utf-8')
             except Exception as e:
-                print(f"Error reading config file: {e}")
+
                 # Create a new config
                 config = configparser.ConfigParser()
                 config.optionxform = str  # Preserve case for keys
@@ -138,7 +138,7 @@ class JoystickProfileManager:
             with open(config_file_path, 'w', encoding='utf-8') as f:
                 config.write(f)
         except Exception as e:
-            print(f"Error writing config file: {e}")
+            pass
         
         return results
     

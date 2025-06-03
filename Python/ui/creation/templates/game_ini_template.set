@@ -1,0 +1,21 @@
+[Game]
+Name = {{GAME_NAME}}
+Executable = {{GAME_EXECUTABLE}}
+Directory = {{GAME_DIRECTORY}}
+SteamTitle = {{STEAM_TITLE}}
+SteamID = {{STEAM_ID}}
+Options = {{GAME_OPTIONS}}
+Arguments = {{GAME_ARGUMENTS}}
+
+[Paths]
+{{PATHS_SECTION}}
+
+[Options]
+RunAsAdmin = {{RUN_AS_ADMIN}}
+HideTaskbar = {{HIDE_TASKBAR}}
+UseKillList = {{USE_KILL_LIST}}
+Borderless = {{BORDERLESS}}
+
+[Sequences]
+LaunchSequence = {{LAUNCH_SEQUENCE}}
+ExitSequence = {{EXIT_SEQUENCE}}

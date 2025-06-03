@@ -117,7 +117,7 @@ class GameLauncher:
                         process = psutil.Process(instance_pid)
                         if process.is_running():
                             # Ask user if they want to terminate the running instance
-                            print(f"Instance already running (PID: {instance_pid})")
+
                             response = input("Would you like to terminate the running instance? (y/n): ")
                             if response.lower() == 'y':
                                 process.terminate()
@@ -129,7 +129,7 @@ class GameLauncher:
                     except psutil.NoSuchProcess:
                         pass  # Process doesn't exist, continue
             except Exception as e:
-                print(f"Error checking instances: {e}")
+
         
         return True
     
@@ -241,7 +241,7 @@ class GameLauncher:
                 for i in range(self.joycount):
                     joystick = pygame.joystick.Joystick(i)
                     joystick.init()
-                    print(f"Joystick {i}: {joystick.get_name()}")
+
             else:
                 self.joymessage = "No joysticks detected"
             
